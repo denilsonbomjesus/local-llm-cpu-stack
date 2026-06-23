@@ -1,0 +1,4 @@
+llama.cpp/
+*.gguf
+*/venv
+*/__pycache__
