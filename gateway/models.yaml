@@ -1,0 +1,28 @@
+models:
+  qwen2.5-1.5b-instruct:
+    type: text
+    endpoint: http://localhost:8001
+
+  gemma-2-2b-abliterated:
+    type: text
+    endpoint: http://localhost:8002
+
+  qwen2.5-coder-1.5b:
+    type: code
+    endpoint: http://localhost:8003
+
+  ministral-agent:
+    type: code
+    endpoint: http://localhost:8004
+
+  ministral-vision:
+    type: vision
+    endpoint: http://localhost:8005
+
+  qwen2.5-vl-3b-abliterated:
+    type: vision
+    endpoint: http://localhost:8010
+
+  # phi-3.5-vision-ov:
+  #   type: vision
+  #   endpoint: http://<IP_Windows>:8011
