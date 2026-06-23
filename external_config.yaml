@@ -1,0 +1,42 @@
+# Este é o seu 'Cardápio de IA' para o n8n e outras ferramentas
+models:
+  # Modelos de Texto/Código passam todos pelo GATEWAY (Porta 9000)
+  qwen2.5-1.5b-instruct:
+    endpoint: http://localhost:9000/v1/chat/completions
+  gemma-2-2b-abliterated:
+    endpoint: http://localhost:9000/v1/chat/completions
+  qwen2.5-coder-1.5b:
+    endpoint: http://localhost:9000/v1/chat/completions
+  ministral-agent:
+    endpoint: http://localhost:9000/v1/chat/completions
+  ministral-vision:
+    endpoint: http://localhost:9000/v1/chat/completions
+
+  # Modelos de Visão (como o seu servidor Python ou o Windows)
+  qwen2.5-vl-3b-abliterated:
+    endpoint: http://localhost:8010/v1/images/captions
+  # phi-3.5-vision-ov:
+  #   endpoint: http://host.docker.internal:8011/v1/images/captions
+
+
+
+# =================================================================
+# EXEMPLO DE USO NA PRÁTICA (N8N OU OUTRO SERVIÇO)
+# =================================================================
+
+# Imagine que você está criando um workflow no n8n. Em vez de você ter que configurar 
+# um nó HTTP diferente para cada modelo, você usa essa lógica:
+
+# Centralização: Você sempre aponta para http://localhost:9000/v1/chat/completions.
+
+# Dinamismo: No corpo (Body) do nó HTTP do n8n, você passa um JSON assim:
+
+# JSON
+# {
+#   "model": "qwen2.5-coder-1.5b",
+#   "messages": [
+#     { "role": "user", "content": "Corrija este código Python..." }
+#   ]
+# }
+# O "Pulo do Gato": O Gateway (porta 9000) recebe isso, olha no seu models.yaml (o interno), 
+# vê que o coder está na porta 8003 e repassa a bola para lá sem o n8n nem saber que a porta 8003 existe.
