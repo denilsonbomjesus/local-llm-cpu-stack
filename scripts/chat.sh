@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
 
+# Salva o argumento do modelo ANTES do source (setupvars.sh consome $@)
+MODEL_ARG="$1"
+
 BASE=~/llm-stack
-CLI="$BASE/llama.cpp/build/ReleaseOV/bin/llama-cli"
+
+# ============================================================
+# Dual-build paths:
+#   build/ReleaseOV → OpenVINO acelerado (Qwen, Ministral)
+#   build/CPU       → GGML nativo (Gemma 2 e outros nao suportados)
+# ============================================================
+CLI_OV="$BASE/llama.cpp/build/ReleaseOV/bin/llama-cli"
+CLI_CPU="$BASE/llama.cpp/build/CPU/bin/llama-cli"
+CLI="$CLI_OV"  # default
 
 # ============================================================
 # OpenVINO Configuration (Intel Core i5 + Iris Xe)
@@ -11,21 +22,37 @@ if [ -f /opt/intel/openvino/setupvars.sh ]; then
     source /opt/intel/openvino/setupvars.sh
 fi
 
-# Default device: GPU (Iris Xe). Fallback: CPU if unavailable
-export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
+# Restaura o argumento (setupvars.sh consome $@ com shift)
+set -- "$MODEL_ARG"
 
 # ------------------------------------------------------------
-# Qwen models require STATELESS execution on GPU (validated)
-# Ministral, Gemma and others work with STATEFUL (default)
+# Device mapping baseado na tabela oficial de modelos validados:
+#   Qwen      → GPU stateless (OpenVINO build)  ✓
+#   Ministral → GPU stateful (OpenVINO build)    ✓
+#   Gemma 2   → CPU nativo (build CPU-only)     ✗ (incompativel)
 # ------------------------------------------------------------
 configure_openvino_for_model() {
     local model_type="$1"
     case "$model_type" in
         qwen-text|qwen-coder|vision)
+            # Qwen: OpenVINO GPU com stateless
+            export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
             export GGML_OPENVINO_STATEFUL_EXECUTION=0
+            CLI="$CLI_OV"
+            ;;
+        ministral-agent|ministral-vision)
+            # Ministral: OpenVINO GPU com stateful
+            export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
+            export GGML_OPENVINO_STATEFUL_EXECUTION=1
+            CLI="$CLI_OV"
             ;;
         *)
-            export GGML_OPENVINO_STATEFUL_EXECUTION=1
+            # Gemma 2: INCOMPATIVEL com OpenVINO. Usa build CPU nativo.
+            # Remove env vars do OpenVINO para evitar interferencia
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            CLI="$CLI_CPU"
+            echo "ℹ️  Gemma 2 incompativel com OpenVINO. Usando motor GGML nativo (CPU)."
             ;;
     esac
 }
@@ -44,7 +71,7 @@ function run_chat() {
         exit 1
     fi
 
-    # Configura OpenVINO stateful/stateless baseado no modelo
+    # Configura OpenVINO e seleciona o build correto
     configure_openvino_for_model "$1"
 
     case $1 in
@@ -70,7 +97,6 @@ function run_chat() {
                  -t $THREADS -c $CTX -cnv --log-disable
             ;;
         vision)
-            # CLI de visão usa o mmproj (não usa o servidor Python)
             $CLI -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf \
                  --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf \
                  -t $THREADS -c $CTX -cnv --log-disable

@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
 
+# Salva argumentos ANTES do source (setupvars.sh consome $@)
+_SAVED_ARGS=("$@")
+
 BASE=~/llm-stack
-LLAMA="$BASE/llama.cpp/build/ReleaseOV/bin/llama-server"
+
+# ============================================================
+# Dual-build paths:
+#   build/ReleaseOV → OpenVINO acelerado (Qwen, Ministral)
+#   build/CPU       → GGML nativo     (Gemma 2, modelos incompativeis)
+# ============================================================
+LLAMA_OV="$BASE/llama.cpp/build/ReleaseOV/bin/llama-server"
+LLAMA_CPU="$BASE/llama.cpp/build/CPU/bin/llama-server"
+LLAMA="$LLAMA_OV"  # default
 
 # ============================================================
 # OpenVINO Configuration (Intel Core i5 + Iris Xe)
@@ -11,21 +22,37 @@ if [ -f /opt/intel/openvino/setupvars.sh ]; then
     source /opt/intel/openvino/setupvars.sh
 fi
 
-# Default device: GPU (Iris Xe). Fallback: CPU if unavailable
-export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
+# Restaura argumentos (setupvars.sh consome $@ com shift)
+set -- "${_SAVED_ARGS[@]}"
+unset _SAVED_ARGS
 
 # ------------------------------------------------------------
-# Qwen models require STATELESS execution on GPU (validated)
-# Ministral, Gemma and others work with STATEFUL (default)
+# Device mapping baseado na tabela oficial de modelos validados:
+#   Qwen      → GPU stateless (OpenVINO build)  ✓
+#   Ministral → GPU stateful (OpenVINO build)    ✓
+#   Gemma 2   → CPU nativo (build CPU-only)     ✗ (incompativel)
 # ------------------------------------------------------------
 configure_openvino_for_model() {
     local model_type="$1"
     case "$model_type" in
         qwen-text|qwen-coder|vision)
+            # Qwen: OpenVINO GPU com stateless
+            export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
             export GGML_OPENVINO_STATEFUL_EXECUTION=0
+            LLAMA="$LLAMA_OV"
+            ;;
+        ministral-agent|ministral-vision)
+            # Ministral: OpenVINO GPU com stateful
+            export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
+            export GGML_OPENVINO_STATEFUL_EXECUTION=1
+            LLAMA="$LLAMA_OV"
             ;;
         *)
-            export GGML_OPENVINO_STATEFUL_EXECUTION=1
+            # Gemma 2: INCOMPATIVEL com OpenVINO. Usa build CPU nativo.
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            LLAMA="$LLAMA_CPU"
+            echo "ℹ️  Gemma 2 incompativel com OpenVINO. Usando motor GGML nativo (CPU)."
             ;;
     esac
 }
@@ -37,36 +64,33 @@ CTX=4096
 BATCH=256
 
 function start_model() {
-    # Configura OpenVINO stateful/stateless baseado no modelo
+    # Configura OpenVINO e seleciona o build correto
     configure_openvino_for_model "$1"
 
     case $1 in
         qwen-text)
             tmux new-session -d -s qwen-text "$LLAMA -m $BASE/models/text/qwen2.5-1.5b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8001"
-            echo "✅ Qwen-Text (GGUF / OpenVINO) iniciado na porta 8001"
+            echo "✅ Qwen-Text (OpenVINO GPU) iniciado na porta 8001"
             ;;
         gemma2)
             tmux new-session -d -s gemma2 "$LLAMA -m $BASE/models/text/gemma-2-2b-it-abliterated-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8002"
-            echo "✅ Gemma-2 (GGUF / OpenVINO) iniciado na porta 8002"
+            echo "✅ Gemma-2 (GGML nativo CPU) iniciado na porta 8002"
             ;;
         qwen-coder)
             tmux new-session -d -s qwen-coder "$LLAMA -m $BASE/models/code/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8003"
-            echo "✅ Qwen-Coder (GGUF / OpenVINO) iniciado na porta 8003"
+            echo "✅ Qwen-Coder (OpenVINO GPU) iniciado na porta 8003"
             ;;
         ministral-agent)
-            # Foco em Código/Texto (Porta 8004) - Sem Visão para economizar RAM
             tmux new-session -d -s ministral-agent "$LLAMA -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8004"
-            echo "✅ Ministral-Agent (Texto/Código / OpenVINO) iniciado na porta 8004"
+            echo "✅ Ministral-Agent (OpenVINO GPU) iniciado na porta 8004"
             ;;
         ministral-vision)
-            # Modo Completo (Porta 8005) - Texto + Visão
             tmux new-session -d -s ministral-vision "$LLAMA -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf --mmproj $BASE/models/code/ministral-3-3b-instruct-2512-mmproj-f16.gguf -t $THREADS -c $CTX -b $BATCH --port 8006"
-            echo "👁️ Ministral-Vision (Texto + Visão / OpenVINO) iniciado na porta 8005"
+            echo "👁️ Ministral-Vision (OpenVINO GPU) iniciado na porta 8005"
             ;;
         vision)
-            # USANDO O MOTOR C++ (Muito mais leve que o Python)
             tmux new-session -d -s vision "$LLAMA -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf -t $THREADS -c $CTX --port 8010"
-            echo "✅ Qwen-VL (Motor C++ GGUF / OpenVINO) iniciado na porta 8010"
+            echo "✅ Qwen-VL (OpenVINO GPU) iniciado na porta 8010"
             ;;
         gateway)
             cd $BASE/gateway
