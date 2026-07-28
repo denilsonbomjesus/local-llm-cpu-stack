@@ -47,9 +47,13 @@ sudo apt install -y \
   curl wget \
   tmux \
   jq
+
+# OpenCL (obrigatório para compilar com OpenVINO e usar a GPU Intel Iris Xe)
+sudo apt install -y \
+  ocl-icd-opencl-dev opencl-headers opencl-clhpp-headers intel-opencl-icd
 ```
 
-Isso cobre compilação do `llama.cpp`, Python para gateway/vision, `tmux` para rodar em background. [github](http://github.com/ggml-org/llama.cpp)
+Isso cobre compilação do `llama.cpp` (com ou sem OpenVINO), Python para gateway/vision, `tmux` para rodar em background. [github](http://github.com/ggml-org/llama.cpp)
 
 Se quiser Node.js (opcional, não vou usar aqui):
 
@@ -59,7 +63,7 @@ sudo apt install -y nodejs
 ```
 
 ***
-## 🧠 2. Clonar e compilar `llama.cpp` (CPU-only)
+## 🧠 2. Clonar e compilar `llama.cpp` (CPU-only + OpenVINO opcional)
 Vou usar o repositório oficial `ggml-org/llama.cpp`. [github](http://github.com/ggml-org/llama.cpp)
 ### 2.1. Clone
 ```bash
@@ -67,7 +71,7 @@ cd ~/llm-stack
 git clone https://github.com/ggml-org/llama.cpp.git
 cd llama.cpp
 ```
-### 2.2. Build otimizado (Release, com suporte a K‑quants e HTTP)
+### 2.2. Build otimizado (Release, com suporte a K‑quants e HTTP, sem aceleração extra)
 ```bash
 mkdir -p build
 cd build
@@ -78,6 +82,65 @@ cmake --build . -j"$(nproc)"
 Isso gera binários em `~/llm-stack/llama.cpp/build/` (`llama-cli`, `llama-server`, etc.). [github](http://github.com/ggml-org/llama.cpp)
 
 > Nota: não vamos ativar CUDA/CL aqui para manter a simplicidade e foco em CPU; a performance nos modelos escolhidos é excelente mesmo sem aceleração de GPU dedicada.
+
+### 2.3. Build com OpenVINO (para Intel CPU/GPU — RECOMENDADO para seu hardware)
+
+Se você tem um processador Intel (especialmente 11ª/12ª/13ª geração ou Intel Core Ultra) com placa integrada Intel Iris Xe, esta opção oferece:
+- **Prompt processing ~2-3x mais rápido** (primeira resposta chega mais rápido)
+- **Token generation 10-30% mais rápido** (texto gerado por segundo)
+- **Suporte a AVX-VNNI** (instruções vetoriais otimizadas da Intel)
+- **Offloading para Iris Xe iGPU** via OpenCL
+
+#### 2.3.1. Instalar OpenVINO Runtime
+```bash
+cd ~
+# Download do OpenVINO 2026.2.1 para Ubuntu 24.04
+wget https://storage.openvinotoolkit.org/repositories/openvino/packages/2026.2.1/linux/openvino_toolkit_ubuntu24_2026.2.1.21919.ede283a88e3_x86_64.tgz -O openvino.tgz
+
+# Extrair para /opt/intel/
+sudo mkdir -p /opt/intel/openvino_2026.2.1
+sudo tar -xzf openvino.tgz -C /opt/intel/openvino_2026.2.1 --strip-components=1
+sudo ln -sfn /opt/intel/openvino_2026.2.1 /opt/intel/openvino
+rm openvino.tgz
+
+# Instalar dependências de runtime do OpenVINO
+sudo -E /opt/intel/openvino/install_dependencies/install_openvino_dependencies.sh -y
+```
+
+#### 2.3.2. Compilar llama.cpp com OpenVINO
+```bash
+cd ~/llm-stack/llama.cpp
+
+# Ativar ambiente OpenVINO
+source /opt/intel/openvino/setupvars.sh
+
+# Limpar build anterior (se existir)
+rm -rf build
+
+# Configurar com CMake (usando Ninja para compilação mais rápida)
+cmake -B build/ReleaseOV -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DGGML_OPENVINO=ON
+
+# Compilar (12 threads)
+cmake --build build/ReleaseOV --parallel
+```
+
+Isso gera binários em `~/llm-stack/llama.cpp/build/ReleaseOV/bin/`.
+
+#### 2.3.3. Adicionar ao ~/.bashrc (automático)
+Adicione estas linhas ao final do `~/.bashrc`:
+
+```bash
+# === OpenVINO ===
+if [ -f /opt/intel/openvino/setupvars.sh ]; then
+    source /opt/intel/openvino/setupvars.sh
+fi
+# Usar GPU (Iris Xe) por padrão. Fallback para CPU se GPU indisponível
+export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
+```
+
+> ⚠️ **Importante sobre modelos Qwen**: Os modelos Qwen (Qwen2.5, Qwen-Coder, Qwen-VL) têm uma limitação conhecida no backend OpenVINO: a execução **stateful na GPU falha**. Os scripts `manage.sh` e `chat.sh` já incluem uma detecção automática que define `GGML_OPENVINO_STATEFUL_EXECUTION=0` para modelos Qwen e `=1` para os demais (Ministral, Gemma).
 
 ***
 ## 📥 3. Download dos modelos (WSL2)
@@ -536,7 +599,7 @@ Para medir performance real:
 
 ```bash
 # uma geração de teste com estatísticas
-./llama.cpp/build/bin/llama-cli \
+./llama.cpp/build/ReleaseOV/bin/llama-cli \
   -m ./models/text/qwen2.5-1.5b-instruct-q4_k_m.gguf \
   -p "Teste de throughput." -n 256 -t 8 -c 4096 -b 256 -ngl 0 \
   --log-disable
@@ -551,7 +614,7 @@ No WSL2, a estrutura consolidada é:
 
 ```text
 ~/llm-stack
-  ├── llama.cpp/               # Binários compilados (llama-server, llama-cli)
+  ├── llama.cpp/               # Binários compilados (llama-server, llama-cli em build/ReleaseOV/bin/)os compilados (llama-server, llama-cli)
   ├── models/
   │   ├── text/                # .gguf de texto (Qwen, Gemma2)
   │   ├── code/                # .gguf de código (Qwen Coder, Ministral, Ministral + mmproj)

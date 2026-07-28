@@ -1,7 +1,35 @@
 #!/usr/bin/env bash
 
 BASE=~/llm-stack
-CLI="$BASE/llama.cpp/build/bin/llama-cli"
+CLI="$BASE/llama.cpp/build/ReleaseOV/bin/llama-cli"
+
+# ============================================================
+# OpenVINO Configuration (Intel Core i5 + Iris Xe)
+# ============================================================
+# Source OpenVINO environment if available
+if [ -f /opt/intel/openvino/setupvars.sh ]; then
+    source /opt/intel/openvino/setupvars.sh
+fi
+
+# Default device: GPU (Iris Xe). Fallback: CPU if unavailable
+export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
+
+# ------------------------------------------------------------
+# Qwen models require STATELESS execution on GPU (validated)
+# Ministral, Gemma and others work with STATEFUL (default)
+# ------------------------------------------------------------
+configure_openvino_for_model() {
+    local model_type="$1"
+    case "$model_type" in
+        qwen-text|qwen-coder|vision)
+            export GGML_OPENVINO_STATEFUL_EXECUTION=0
+            ;;
+        *)
+            export GGML_OPENVINO_STATEFUL_EXECUTION=1
+            ;;
+    esac
+}
+# ============================================================
 
 # Configurações de Hardware (Idênticas ao manage.sh para consistência)
 THREADS=8
@@ -15,6 +43,9 @@ function run_chat() {
         echo "Pare o servidor primeiro com: ./manage.sh stop $1"
         exit 1
     fi
+
+    # Configura OpenVINO stateful/stateless baseado no modelo
+    configure_openvino_for_model "$1"
 
     case $1 in
         qwen-text)

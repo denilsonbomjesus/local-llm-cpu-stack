@@ -1,7 +1,35 @@
 #!/usr/bin/env bash
 
 BASE=~/llm-stack
-LLAMA="$BASE/llama.cpp/build/bin/llama-server"
+LLAMA="$BASE/llama.cpp/build/ReleaseOV/bin/llama-server"
+
+# ============================================================
+# OpenVINO Configuration (Intel Core i5 + Iris Xe)
+# ============================================================
+# Source OpenVINO environment if available
+if [ -f /opt/intel/openvino/setupvars.sh ]; then
+    source /opt/intel/openvino/setupvars.sh
+fi
+
+# Default device: GPU (Iris Xe). Fallback: CPU if unavailable
+export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
+
+# ------------------------------------------------------------
+# Qwen models require STATELESS execution on GPU (validated)
+# Ministral, Gemma and others work with STATEFUL (default)
+# ------------------------------------------------------------
+configure_openvino_for_model() {
+    local model_type="$1"
+    case "$model_type" in
+        qwen-text|qwen-coder|vision)
+            export GGML_OPENVINO_STATEFUL_EXECUTION=0
+            ;;
+        *)
+            export GGML_OPENVINO_STATEFUL_EXECUTION=1
+            ;;
+    esac
+}
+# ============================================================
 
 # Configurações de Hardware (Otimizadas para seu i5-1235U)
 THREADS=8
@@ -9,40 +37,36 @@ CTX=4096
 BATCH=256
 
 function start_model() {
+    # Configura OpenVINO stateful/stateless baseado no modelo
+    configure_openvino_for_model "$1"
+
     case $1 in
         qwen-text)
             tmux new-session -d -s qwen-text "$LLAMA -m $BASE/models/text/qwen2.5-1.5b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8001"
-            echo "✅ Qwen-Text (GGUF) iniciado na porta 8001"
+            echo "✅ Qwen-Text (GGUF / OpenVINO) iniciado na porta 8001"
             ;;
         gemma2)
             tmux new-session -d -s gemma2 "$LLAMA -m $BASE/models/text/gemma-2-2b-it-abliterated-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8002"
-            echo "✅ Gemma-2 (GGUF) iniciado na porta 8002"
+            echo "✅ Gemma-2 (GGUF / OpenVINO) iniciado na porta 8002"
             ;;
         qwen-coder)
             tmux new-session -d -s qwen-coder "$LLAMA -m $BASE/models/code/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8003"
-            echo "✅ Qwen-Coder (GGUF) iniciado na porta 8003"
+            echo "✅ Qwen-Coder (GGUF / OpenVINO) iniciado na porta 8003"
             ;;
         ministral-agent)
             # Foco em Código/Texto (Porta 8004) - Sem Visão para economizar RAM
             tmux new-session -d -s ministral-agent "$LLAMA -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8004"
-            echo "✅ Ministral-Agent (Texto/Código) iniciado na porta 8004"
+            echo "✅ Ministral-Agent (Texto/Código / OpenVINO) iniciado na porta 8004"
             ;;
         ministral-vision)
             # Modo Completo (Porta 8005) - Texto + Visão
             tmux new-session -d -s ministral-vision "$LLAMA -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf --mmproj $BASE/models/code/ministral-3-3b-instruct-2512-mmproj-f16.gguf -t $THREADS -c $CTX -b $BATCH --port 8006"
-            echo "👁️ Ministral-Vision (Texto + Visão) iniciado na porta 8005"
+            echo "👁️ Ministral-Vision (Texto + Visão / OpenVINO) iniciado na porta 8005"
             ;;
-        # vision)
-        #     # Rota Python/Transformers conforme sua implementação (Porta 8010)
-        #     cd $BASE/vision
-        #     source venv/bin/activate
-        #     tmux new-session -d -s vision "uvicorn qwen_vl_server:app --host 0.0.0.0 --port 8010"
-        #     echo "👁️ Qwen-VL (Python Server) iniciado na porta 8010"
-        #     ;;
         vision)
             # USANDO O MOTOR C++ (Muito mais leve que o Python)
             tmux new-session -d -s vision "$LLAMA -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf -t $THREADS -c $CTX --port 8010"
-            echo "✅ Qwen-VL (Motor C++ GGUF) iniciado na porta 8010"
+            echo "✅ Qwen-VL (Motor C++ GGUF / OpenVINO) iniciado na porta 8010"
             ;;
         gateway)
             cd $BASE/gateway
