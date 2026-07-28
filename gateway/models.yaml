@@ -23,6 +23,14 @@ models:
     type: vision
     endpoint: http://localhost:8010
 
+  bonsai-27b-1bit:
+    type: text
+    endpoint: http://localhost:8011
+
+  ternary-bonsai-27b:
+    type: text
+    endpoint: http://localhost:8012
+
   # phi-3.5-vision-ov:
   #   type: vision
   #   endpoint: http://<IP_Windows>:8011

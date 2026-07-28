@@ -24,7 +24,8 @@ The project is organized to keep models, servers, and scripts isolated:
   ├── models/                  # .gguf files organized by category
   │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B Abliterated
   │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512
-  │   └── vision/              # Qwen2.5-VL (Model + mmproj)
+  │   ├── vision/              # Qwen2.5-VL (Model + mmproj)
+  │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # Python server for Qwen-VL
   ├── gateway/                 # FastAPI router (Port 9000)
   ├── scripts/                 # Control scripts (manage.sh, chat.sh)
@@ -241,6 +242,52 @@ wget -O ~/llm-stack/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8
 
 > Note: I didn't see Q4_K_M explicitly in the tree, but IQ4_XS is a compact 4‑bit variant, suitable for CPU. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)
 
+### 3.4. Bonsai 27B (1-bit & Ternary)
+
+Dois modelos revolucionários da PrismML que cabem no seu setup. O Bonsai 27B é baseado no Qwen3.6-27B com pesos em formato binário (1-bit) ou ternário, atingindo ~90-95% da qualidade FP16 com uma fração do tamanho.
+
+**Pré-requisito:** llama.cpp atualizado (versão >= que suporta Q1_0 e Q2_0_g64).
+
+#### Bonsai 27B 1-bit (Q1_0_g128)
+
+Repo: `prism-ml/Bonsai-27B-gguf`. [huggingface](https://huggingface.co/prism-ml/Bonsai-27B-gguf)
+
+- **Arquivo:** `Bonsai-27B-Q1_0.gguf` (3.8 GB)
+- **Qualidade:** 89.5% do FP16 (média 76.11 nos benchmarks)
+- **RAM (4K ctx):** ~5.2 GB ✅ cabe em 8 GB WSL2
+- **RAM (10K ctx):** ~5.6 GB ✅ 
+- **RAM (100K ctx):** ~6.8 GB (com KV cache 4-bit)
+- **Velocidade estimada (CPU):** ~4-8 tok/s
+
+```bash
+mkdir -p ~/llm-stack/models/bonsai
+cd ~/llm-stack/models/bonsai
+
+wget -O Bonsai-27B-Q1_0.gguf \
+  https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/main/Bonsai-27B-Q1_0.gguf
+```
+
+#### Ternary Bonsai 27B (Q2_0_g64)
+
+Repo: `prism-ml/Ternary-Bonsai-27B-gguf`. [huggingface](https://huggingface.co/prism-ml/Ternary-Bonsai-27B-gguf)
+
+- **Arquivo:** `Ternary-Bonsai-27B-Q2_g64.gguf` (7.2 GB) — variante mainline-compatible (grupo 64)
+- **Qualidade:** 94.6% do FP16 (média 80.49) — **quase perfeito**
+- **RAM (4K ctx):** ~8.4 GB ⚠️ precisa de 10 GB WSL2
+- **RAM (10K ctx):** ~8.7 GB ⚠️
+- **Velocidade estimada (CPU):** ~2-5 tok/s
+
+```bash
+cd ~/llm-stack/models/bonsai
+
+wget -O Ternary-Bonsai-27B-Q2_g64.gguf \
+  https://huggingface.co/prism-ml/Ternary-Bonsai-27B-gguf/resolve/main/Ternary-Bonsai-27B-Q2_g64.gguf
+```
+
+> **Sobre MTP/DSpark:** Ambos os modelos vêm com DSpark drafter, mas ele **não acelera em CPU** (só CUDA). Pule o download do drafter para economizar ~1.8 GB de RAM.
+
+> **Sobre o llama.cpp:** O Q1_0 e Q2_0_g64 já estão **mergeados no mainline** do llama.cpp. Basta dar `git pull` e recompilar o build CPU para suportá-los.
+
 ***
 ## 🧠 2b. What is Q4_K_M / IQ4_XS?
 - **Q4_K_M**: 4‑bit quantization in "super‑blocks" with per‑block statistics, 4.5 bits per weight, optimal quality vs RAM trade‑off – the normally recommended option for general use. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)
@@ -270,6 +317,8 @@ In the terminal (WSL2), run:
 - `ministral-agent`    → Port 8004 (Ministral 3 3B)
 - `ministral-vision`   → Port 8005 (Ministral 3 3B)
 - `vision`             → Port 8010 (Qwen-VL Python Server)
+- `bonsai-27b`         → Port 8011 (Bonsai 27B 1-bit ~4-8 tok/s)
+- `ternary-bonsai`     → Port 8012 (Ternary Bonsai 27B ~2-5 tok/s)
 - `gateway`            → Port 9000 (The Central Router)
 
 ### 4.2. Useful Manager commands
@@ -412,6 +461,14 @@ models:
   qwen2.5-vl-3b-abliterated:
     type: vision
     endpoint: http://localhost:8010
+
+  bonsai-27b-1bit:
+    type: text
+    endpoint: http://localhost:8011
+
+  ternary-bonsai-27b:
+    type: text
+    endpoint: http://localhost:8012
 ```
 
 > This same YAML can be reused in n8n to have a centralized endpoint table.
@@ -592,8 +649,10 @@ curl http://localhost:9000/v1/chat/completions \
 
 - Qwen2.5‑1.5B‑Instruct‑Q4_K_M → ~1.1 GB + KV‑cache (up to ~2–3 GB with large context). [huggingface](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)
 - Qwen2.5‑Coder‑1.5B‑Q4_K_M → ~1.0 GB + cache. [huggingface](https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF)
+- **Bonsai 27B 1-bit** → ~3.9 GB + ~1.3 GB overhead + KV cache (~5.2 GB total at 4K ctx)
+- **Ternary Bonsai 27B** → ~7.2 GB + ~1.2 GB overhead + KV cache (~8.4 GB total at 4K ctx)
 
-With 16 GB you can run **3–4 1.5–3B models** in Q4 simultaneously + system + n8n, as long as you don't overdo huge contexts on all at once. [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
+Com 16 GB você pode rodar **1 modelo Bonsai 27B + 2 modelos pequenos** simultaneamente, mas **nunca os dois Bonsai ao mesmo tempo** (cada um precisa de ~5-8 GB). [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
 
 To measure real performance:
 
@@ -617,7 +676,8 @@ On WSL2, the consolidated structure is:
   ├── models/
   │   ├── text/                # Text .gguf (Qwen, Gemma2)
   │   ├── code/                # Code .gguf (Qwen Coder, Ministral, Ministral + mmproj)
-  │   └── vision/              # Vision .gguf (Qwen-VL + mmproj)
+  │   ├── vision/              # Vision .gguf (Qwen-VL + mmproj)
+  │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # venv + qwen_vl_server.py
   ├── gateway/                 # venv + gateway_server.py + models.yaml
   ├── scripts/                 
