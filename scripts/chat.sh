@@ -25,23 +25,55 @@ fi
 # Restaura o argumento (setupvars.sh consome $@ com shift)
 set -- "$MODEL_ARG"
 
+# ============================================================
+# Locale: Força UTF-8 para evitar que caracteres acentuados
+# (português, etc.) apareçam como '?' no terminal.
+# Definido APOS setupvars.sh para evitar que ele sobrescreva.
+# C.UTF-8 é embutido na glibc e funciona em praticamente
+# todos os sistemas Linux modernos.
+# ============================================================
+export LANG=C.UTF-8
+export LC_ALL=C.UTF-8
+# ============================================================
 # ------------------------------------------------------------
 # Device mapping FINAL - validado no i5-1235U Iris Xe:
-#   ✅  Qwen (qwen-text, qwen-coder, vision) → OpenVINO GPU (stateless)
-#   ❌  Ministral (agent, vision) → OpenVINO GPU/CPU crash/shape mismatch → GGML nativo
-#   ❌  Gemma 2                    → OpenVINO incompativel                → GGML nativo
+#   ⚠️  Qwen-Text                             → OpenVINO GPU (stateless)
+#                                            → encoding bug em alguns modelos
+#   ❌  Qwen-Coder (qwen-coder)              → OpenVINO corrompe saida     → GGML nativo CPU
+#   ❌  Qwen-VL   (vision)                   → OpenVINO shape mismatch     → GGML nativo CPU
+#   ❌  Ministral (agent, vision)            → OpenVINO incompativel       → GGML nativo CPU
+#   ❌  Gemma 2                              → OpenVINO incompativel       → GGML nativo CPU
 #
-# Conclusao: OpenVINO trouxe ZERO ganho para CPU. So vale a pena na GPU.
+# Conclusao: OpenVINO tem bugs de encoding/shape nos builds atuais.
+# So Qwen-Text funciona (parcialmente) no GPU. Demais vao para CPU.
 # ------------------------------------------------------------
 configure_openvino_for_model() {
     local model_type="$1"
     case "$model_type" in
-        qwen-text|qwen-coder|vision)
-            # Qwen: OpenVINO GPU com stateless ✅
+        qwen-text)
+            # Qwen-Text: OpenVINO GPU com stateless (pode ter encoding bug)
             export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
             export GGML_OPENVINO_STATEFUL_EXECUTION=0
             CLI="$CLI_OV"
-            echo "ℹ️  Qwen: OpenVINO GPU (stateless)"
+            echo "ℹ️  Qwen-Text: OpenVINO GPU (stateless)"
+            ;;
+        qwen-coder)
+            # Qwen-Coder: OpenVINO GPU corrompe saida de texto
+            # O backend OpenVINO GPU decodifica tokens incorretamente,
+            # fazendo com que caracteres acentuados virem '?' no terminal.
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            CLI="$CLI_CPU"
+            echo "ℹ️  Qwen-Coder: OpenVINO GPU corrompe output. Usando GGML nativo (CPU)."
+            ;;
+        vision)
+            # Qwen-VL: OpenVINO INCOMPATIVEL (tensor shape mismatch no GPU)
+            # O modelo multimodal tem shapes dinamicos que o OpenVINO GPU nao gerencia.
+            # Erro tipico: espera [1,1,2,256] mas recebe [1,2,2,128]
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            CLI="$CLI_CPU"
+            echo "ℹ️  Qwen-VL: OpenVINO incompativel. Usando GGML nativo (CPU)."
             ;;
         ministral-agent|ministral-vision)
             # Ministral: OpenVINO INCOMPATIVEL (GPU crash + CPU shape mismatch)

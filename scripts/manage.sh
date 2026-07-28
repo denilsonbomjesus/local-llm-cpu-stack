@@ -28,21 +28,39 @@ unset _SAVED_ARGS
 
 # ------------------------------------------------------------
 # Device mapping FINAL - validado no i5-1235U Iris Xe:
-#   ✅  Qwen (qwen-text, qwen-coder, vision) → OpenVINO GPU (stateless)
-#   ❌  Ministral (agent, vision) → OpenVINO GPU/CPU crash/shape mismatch → GGML nativo
-#   ❌  Gemma 2                    → OpenVINO incompativel                → GGML nativo
+#   ⚠️  Qwen-Text                             → OpenVINO GPU (stateless)
+#                                            → encoding bug em alguns modelos
+#   ❌  Qwen-Coder (qwen-coder)              → OpenVINO corrompe saida     → GGML nativo CPU
+#   ❌  Qwen-VL   (vision)                   → OpenVINO shape mismatch     → GGML nativo CPU
+#   ❌  Ministral (agent, vision)            → OpenVINO incompativel       → GGML nativo CPU
+#   ❌  Gemma 2                              → OpenVINO incompativel       → GGML nativo CPU
 #
-# Conclusao: OpenVINO trouxe ZERO ganho para CPU. So vale a pena na GPU.
+# Conclusao: OpenVINO tem bugs de encoding/shape nos builds atuais.
+# So Qwen-Text funciona (parcialmente) no GPU. Demais vao para CPU.
 # ------------------------------------------------------------
 configure_openvino_for_model() {
     local model_type="$1"
     case "$model_type" in
-        qwen-text|qwen-coder|vision)
-            # Qwen: OpenVINO GPU com stateless ✅
+        qwen-text)
+            # Qwen-Text: OpenVINO GPU com stateless (pode ter encoding bug)
             export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
             export GGML_OPENVINO_STATEFUL_EXECUTION=0
             LLAMA="$LLAMA_OV"
-            echo "ℹ️  Qwen: OpenVINO GPU (stateless)"
+            echo "ℹ️  Qwen-Text: OpenVINO GPU (stateless)"
+            ;;
+        qwen-coder)
+            # Qwen-Coder: OpenVINO GPU corrompe saida de texto
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            LLAMA="$LLAMA_CPU"
+            echo "ℹ️  Qwen-Coder: OpenVINO GPU corrompe output. Usando GGML nativo (CPU)."
+            ;;
+        vision)
+            # Qwen-VL: OpenVINO INCOMPATIVEL (tensor shape mismatch no GPU)
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            LLAMA="$LLAMA_CPU"
+            echo "ℹ️  Qwen-VL: OpenVINO incompativel. Usando GGML nativo (CPU)."
             ;;
         ministral-agent|ministral-vision)
             # Ministral: OpenVINO INCOMPATIVEL (GPU crash + CPU shape mismatch)
