@@ -26,33 +26,36 @@ fi
 set -- "$MODEL_ARG"
 
 # ------------------------------------------------------------
-# Device mapping baseado na tabela oficial de modelos validados:
-#   Qwen      → GPU stateless (OpenVINO build)  ✓
-#   Ministral → GPU stateful (OpenVINO build)    ✓
-#   Gemma 2   → CPU nativo (build CPU-only)     ✗ (incompativel)
+# Device mapping FINAL - validado no i5-1235U Iris Xe:
+#   ✅  Qwen (qwen-text, qwen-coder, vision) → OpenVINO GPU (stateless)
+#   ❌  Ministral (agent, vision) → OpenVINO GPU/CPU crash/shape mismatch → GGML nativo
+#   ❌  Gemma 2                    → OpenVINO incompativel                → GGML nativo
+#
+# Conclusao: OpenVINO trouxe ZERO ganho para CPU. So vale a pena na GPU.
 # ------------------------------------------------------------
 configure_openvino_for_model() {
     local model_type="$1"
     case "$model_type" in
         qwen-text|qwen-coder|vision)
-            # Qwen: OpenVINO GPU com stateless
+            # Qwen: OpenVINO GPU com stateless ✅
             export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
             export GGML_OPENVINO_STATEFUL_EXECUTION=0
             CLI="$CLI_OV"
+            echo "ℹ️  Qwen: OpenVINO GPU (stateless)"
             ;;
         ministral-agent|ministral-vision)
-            # Ministral: OpenVINO GPU com stateful
-            export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
-            export GGML_OPENVINO_STATEFUL_EXECUTION=1
-            CLI="$CLI_OV"
-            ;;
-        *)
-            # Gemma 2: INCOMPATIVEL com OpenVINO. Usa build CPU nativo.
-            # Remove env vars do OpenVINO para evitar interferencia
+            # Ministral: OpenVINO INCOMPATIVEL (GPU crash + CPU shape mismatch)
             unset GGML_OPENVINO_DEVICE
             unset GGML_OPENVINO_STATEFUL_EXECUTION
             CLI="$CLI_CPU"
-            echo "ℹ️  Gemma 2 incompativel com OpenVINO. Usando motor GGML nativo (CPU)."
+            echo "ℹ️  Ministral: OpenVINO incompativel. Usando GGML nativo (CPU)."
+            ;;
+        *)
+            # Gemma 2: OpenVINO INCOMPATIVEL
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            CLI="$CLI_CPU"
+            echo "ℹ️  Gemma 2: OpenVINO incompativel. Usando GGML nativo (CPU)."
             ;;
     esac
 }
@@ -63,48 +66,49 @@ THREADS=8
 CTX=4096
 BATCH=256
 
-function run_chat() {
-    # Verificar se o servidor desse modelo já está rodando no TMUX para evitar crash de RAM
-    if tmux ls 2>/dev/null | grep -q "$1"; then
-        echo "⚠️ ERRO: O servidor '$1' está ativo no manage.sh!"
-        echo "Pare o servidor primeiro com: ./manage.sh stop $1"
+# ============================================================
+# helper: monta o comando de chat para um modelo
+# ============================================================
+chat_cmd_for() {
+    local model="$1"
+    local cli="$CLI"
+    case "$model" in
+        qwen-text)  echo "$cli -m $BASE/models/text/qwen2.5-1.5b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        gemma2)     echo "$cli -m $BASE/models/text/gemma-2-2b-it-abliterated-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        qwen-coder) echo "$cli -m $BASE/models/code/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        ministral-agent) echo "$cli -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        ministral-vision) echo "$cli -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf --mmproj $BASE/models/code/ministral-3-3b-instruct-2512-mmproj-f16.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        vision)     echo "$cli -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf -t $THREADS -c $CTX" ;;
+        *)          echo "" ;;
+    esac
+}
+
+# ============================================================
+# run_chat: inicia o chat interativo
+# Usa o backend definido por configure_openvino_for_model (mapeamento estatico)
+# ============================================================
+run_chat() {
+    local model="$1"
+
+    # Verificar se o servidor desse modelo já está rodando no TMUX
+    if tmux ls 2>/dev/null | grep -q "$model"; then
+        echo "⚠️ ERRO: O servidor '$model' está ativo no manage.sh!"
+        echo "Pare o servidor primeiro com: ./manage.sh stop $model"
         exit 1
     fi
 
     # Configura OpenVINO e seleciona o build correto
-    configure_openvino_for_model "$1"
+    configure_openvino_for_model "$model"
 
-    case $1 in
-        qwen-text)
-            $CLI -m $BASE/models/text/qwen2.5-1.5b-instruct-q4_k_m.gguf \
-                 -t $THREADS -c $CTX -b $BATCH -cnv --log-disable
-            ;;
-        gemma2)
-            $CLI -m $BASE/models/text/gemma-2-2b-it-abliterated-q4_k_m.gguf \
-                 -t $THREADS -c $CTX -b $BATCH -cnv --log-disable
-            ;;
-        qwen-coder)
-            $CLI -m $BASE/models/code/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf \
-                 -t $THREADS -c $CTX -b $BATCH -cnv --log-disable
-            ;;
-        ministral-agent)
-            $CLI -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf \
-                 -t $THREADS -c $CTX -cnv --log-disable
-            ;;
-        ministral-vision)
-            $CLI -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf \
-                 --mmproj $BASE/models/code/ministral-3-3b-instruct-2512-mmproj-f16.gguf \
-                 -t $THREADS -c $CTX -cnv --log-disable
-            ;;
-        vision)
-            $CLI -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf \
-                 --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf \
-                 -t $THREADS -c $CTX -cnv --log-disable
-            ;;
-        *)
-            show_help
-            ;;
-    esac
+    local cmd
+    cmd=$(chat_cmd_for "$model")
+    if [ -z "$cmd" ]; then
+        show_help
+        return
+    fi
+
+    # --- CHAT INTERATIVO ---
+    $cmd -cnv --log-disable
 }
 
 function show_help() {
