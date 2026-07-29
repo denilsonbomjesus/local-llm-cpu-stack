@@ -23,7 +23,7 @@ The project is organized to keep models, servers, and scripts isolated:
   ├── llama.cpp/               # Source code and compiled binaries
   ├── models/                  # .gguf files organized by category
   │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B), Dolphin3.0, Lexi-8B
-  │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512, LFM 2.5, Nanbeige4.2
+  │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512, LFM 2.5, Nanbeige4.2, MiniCPM5-1B
   │   ├── vision/              # Qwen2.5-VL (Model + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # Python server for Qwen-VL
@@ -284,6 +284,27 @@ wget -O Nanbeige4.2-3B-Q4_K_M.gguf \
   https://huggingface.co/owao/Nanbeige4.2-3B-GGUF/resolve/main/Nanbeige4.2-3B-Q4_K_M.gguf
 ```
 
+#### MiniCPM5-1B-Agentic-Tooluse (Q8_0)
+
+O **MiniCPM5-1B-Agentic-Tooluse** é um modelo compacto de 1B parâmetros da OpenBMB, fine-tuned com Nemotron-DPO para ferramentas XML e fluxos agentivos. Baseado em LlamaForCausalLM, nativo 128K de contexto.
+
+Repo: `ewinregirgojr/MiniCPM5-1B-Agentic-Tooluse-GGUF`. [huggingface](https://huggingface.co/ewinregirgojr/MiniCPM5-1B-Agentic-Tooluse-GGUF)
+
+- **Arquivo:** `MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf` (1.1 GB)
+- **Qualidade:** Excelente (Q8_0 = quase perda zero, ~99% do FP16)
+- **RAM (4K ctx):** ~2.1 GB ✅ cabe com folga em 8 GB WSL2
+- **Velocidade CPU (i5):** ~30-50 tok/s ⚡ Muito rápido
+- **Com thinking mode** (tags `<think>`/`</think>` via `enable_thinking`)
+- Use `minicpm5-nothink` para desligar o thinking e obter respostas mais diretas
+- **128K contexto nativo** (recomendado manter 4K-8K para CPU)
+
+```bash
+cd ~/llm-stack/models/code
+
+wget -O MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf \
+  https://huggingface.co/ewinregirgojr/MiniCPM5-1B-Agentic-Tooluse-GGUF/resolve/main/MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf
+```
+
 #### Download mmproj for Ministral
 This file is the "eyes" of Ministral-3-3B-Instruct-2512.
 
@@ -466,6 +487,8 @@ In the terminal (WSL2), run:
 - `lfm25`             → Port 8061 (Liquid LFM 2.5 1.2B Q8_0 ~25-40 tok/s)
 - `nanbeige`          → Port 8071 (Nanbeige4.2-3B Q4_K_M ~18-30 tok/s)
 - `nanbeige-nothink`   → Port 8073 (Nanbeige4.2-3B, thinking OFF)
+- `minicpm5`           → Port 8081 (MiniCPM5-1B Nemotron-DPO Q8_0 ~30-50 tok/s)
+- `minicpm5-nothink`    → Port 8083 (MiniCPM5-1B, thinking OFF)
 - `gemma4-e4b-vision` → Port 8032 (Gemma 4 E4B + visão)
 - `gemma4-e4b-vision-nothink`→ Port 8034 (Gemma 4 E4B + visão, thinking OFF)
 - `gateway`            → Port 9000 (The Central Router)
@@ -840,6 +863,7 @@ curl http://localhost:9000/v1/chat/completions \
 - **Lexi-Llama-3-8B-Uncensored Q4_K_M** → ~4.6 GB + ~1.5 GB overhead + KV cache (~6.1 GB total at 4K ctx)
 - **LFM 2.5 1.2B Q8_0** → ~1.2 GB + ~1 GB overhead + KV cache (~2.2 GB total at 4K ctx)
 - **Nanbeige4.2-3B Q4_K_M** → ~2.4 GB + ~1 GB overhead + KV cache (~3.4 GB total at 4K ctx)
+- **MiniCPM5-1B Q8_0** → ~1.1 GB + ~1 GB overhead + KV cache (~2.1 GB total at 4K ctx)
 
 Com 16 GB você pode rodar **1 modelo Bonsai 27B + 2 modelos pequenos** simultaneamente, mas **nunca os dois Bonsai ao mesmo tempo** (cada um precisa de ~5-8 GB). Os Gemma 4 E2B/E4B são leves o suficiente para rodar lado a lado com outros modelos. [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
 
@@ -864,7 +888,7 @@ On WSL2, the consolidated structure is:
   ├── llama.cpp/               # Compiled binaries (llama-server, llama-cli em build/ReleaseOV/bin/)
   ├── models/
   │   ├── text/                # Text .gguf (Qwen, Gemma2, Gemma 4 E2B/E4B, Dolphin3.0, Lexi-8B)
-  │   ├── code/                # Code .gguf (Qwen Coder, Ministral, Ministral + mmproj, LFM 2.5, Nanbeige4.2)
+  │   ├── code/                # Code .gguf (Qwen Coder, Ministral, Ministral + mmproj, LFM 2.5, Nanbeige4.2, MiniCPM5)
   │   ├── vision/              # Vision .gguf (Qwen-VL + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # venv + qwen_vl_server.py

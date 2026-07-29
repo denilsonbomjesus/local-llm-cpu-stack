@@ -91,6 +91,14 @@ models:
     type: code
     endpoint: http://localhost:8073
 
+  minicpm5-1b-agentic-tooluse:
+    type: code
+    endpoint: http://localhost:8081
+
+  minicpm5-1b-agentic-tooluse-nothink:
+    type: code
+    endpoint: http://localhost:8083
+
   # phi-3.5-vision-ov:
   #   type: vision
   #   endpoint: http://<IP_Windows>:8011

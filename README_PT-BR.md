@@ -284,6 +284,27 @@ wget -O Nanbeige4.2-3B-Q4_K_M.gguf \
   https://huggingface.co/owao/Nanbeige4.2-3B-GGUF/resolve/main/Nanbeige4.2-3B-Q4_K_M.gguf
 ```
 
+#### MiniCPM5-1B-Agentic-Tooluse (Q8_0)
+
+O **MiniCPM5-1B-Agentic-Tooluse** é um modelo compacto de 1B parâmetros da OpenBMB, fine-tuned com Nemotron-DPO para ferramentas XML e fluxos agentivos. Baseado em LlamaForCausalLM, nativo 128K de contexto.
+
+Repo: `ewinregirgojr/MiniCPM5-1B-Agentic-Tooluse-GGUF`. [huggingface](https://huggingface.co/ewinregirgojr/MiniCPM5-1B-Agentic-Tooluse-GGUF)
+
+- **Arquivo:** `MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf` (1.1 GB)
+- **Qualidade:** Excelente (Q8_0 = quase perda zero, ~99% do FP16)
+- **RAM (4K ctx):** ~2.1 GB ✅ cabe com folga em 8 GB WSL2
+- **Velocidade CPU (i5):** ~30-50 tok/s ⚡ Muito rápido
+- **Com thinking mode** (tags `<think>`/`</think>` via `enable_thinking`)
+- Use `minicpm5-nothink` para desligar o thinking e obter respostas mais diretas
+- **128K contexto nativo** (recomendado manter 4K-8K para CPU)
+
+```bash
+cd ~/llm-stack/models/code
+
+wget -O MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf \
+  https://huggingface.co/ewinregirgojr/MiniCPM5-1B-Agentic-Tooluse-GGUF/resolve/main/MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf
+```
+
 #### Download do mmproj 
 O arquivo é os "olhos" do Ministral-3-3B-Instruct-2512.
 
@@ -420,6 +441,8 @@ No terminal (WSL2), execute:
 - `lfm25`             → Porta 8061 (Liquid LFM 2.5 1.2B Q8_0 ~25-40 tok/s)
 - `nanbeige`          → Porta 8071 (Nanbeige4.2-3B Q4_K_M ~18-30 tok/s)
 - `nanbeige-nothink`   → Porta 8073 (Nanbeige4.2-3B, thinking OFF)
+- `minicpm5`           → Porta 8081 (MiniCPM5-1B Nemotron-DPO Q8_0 ~30-50 tok/s)
+- `minicpm5-nothink`    → Porta 8083 (MiniCPM5-1B, thinking OFF)
 - `gemma4-e4b-vision` → Porta 8032 (Gemma 4 E4B + visão)
 - `gemma4-e4b-vision-nothink`→ Porta 8034 (Gemma 4 E4B + visão, thinking OFF)
 - `gateway`            → Porta 9000 (O Roteador Central)

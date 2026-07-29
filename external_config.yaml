@@ -41,6 +41,10 @@ models:
     endpoint: http://localhost:9000/v1/chat/completions
   nanbeige4.2-3b-nothink:
     endpoint: http://localhost:9000/v1/chat/completions
+  minicpm5-1b-agentic-tooluse:
+    endpoint: http://localhost:9000/v1/chat/completions
+  minicpm5-1b-agentic-tooluse-nothink:
+    endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e4b-vision:
     endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e4b-vision-nothink:
