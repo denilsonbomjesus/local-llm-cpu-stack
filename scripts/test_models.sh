@@ -179,13 +179,12 @@ case "$MODE" in
         echo "🧪 Modo: TESTE CHAT"
         echo ""
 
-        test_chat "qwen-text"     "Qwen-Text"
-        test_chat "gemma2"        "Gemma-2"
         test_chat "qwen-coder"    "Qwen-Coder"
-        test_chat "ministral-agent" "Ministral-Agent"
-        # vision e ministral-vision precisam de imagem, test so o carregamento
         test_chat "vision"        "Qwen-VL (visao)"
-        test_chat "ministral-vision" "Ministral-Vision (visao)"
+        test_chat "dolphin3"      "Dolphin3.0"
+        test_chat "lfm25"         "LFM 2.5"
+        test_chat "nanbeige"      "Nanbeige4.2"
+        test_chat "minicpm5"      "MiniCPM5"
 
         print_summary
         ;;
@@ -194,11 +193,12 @@ case "$MODE" in
         echo "🧪 Modo: TESTE SERVER"
         echo ""
 
-        test_server "qwen-text"    8001 "Qwen-Text"
-        test_server "gemma2"       8002 "Gemma-2"
         test_server "qwen-coder"   8003 "Qwen-Coder"
-        test_server "ministral-agent" 8004 "Ministral-Agent"
         test_server "vision"       8010 "Qwen-VL (visao)"
+        test_server "dolphin3"     8041 "Dolphin3.0"
+        test_server "lfm25"        8061 "LFM 2.5"
+        test_server "nanbeige"     8071 "Nanbeige4.2"
+        test_server "minicpm5"     8081 "MiniCPM5"
 
         print_summary
         ;;
@@ -211,24 +211,24 @@ case "$MODE" in
         echo "  📋 TESTES DE CHAT INTERATIVO"
         echo "──────────────────────────────────────────────"
 
-        test_chat "qwen-text"     "Qwen-Text"
-        test_chat "gemma2"        "Gemma-2"
         test_chat "qwen-coder"    "Qwen-Coder"
-        test_chat "ministral-agent" "Ministral-Agent"
-        test_chat "vision"             "Qwen-VL (visao)"
-        test_chat "ministral-vision" "Ministral-Vision (visao)"
+        test_chat "vision"        "Qwen-VL (visao)"
+        test_chat "dolphin3"      "Dolphin3.0"
+        test_chat "lfm25"         "LFM 2.5"
+        test_chat "nanbeige"      "Nanbeige4.2"
+        test_chat "minicpm5"      "MiniCPM5"
 
         echo ""
         echo "──────────────────────────────────────────────"
         echo "  📋 TESTES DE SERVIDOR"
         echo "──────────────────────────────────────────────"
 
-        test_server "qwen-text"         8001 "Qwen-Text"
-        test_server "gemma2"            8002 "Gemma-2"
-        test_server "qwen-coder"        8003 "Qwen-Coder"
-        test_server "ministral-agent"   8004 "Ministral-Agent"
-        test_server "ministral-vision"  8005 "Ministral-Vision (visao)"
-        test_server "vision"            8010 "Qwen-VL (visao)"
+        test_server "qwen-coder"   8003 "Qwen-Coder"
+        test_server "vision"       8010 "Qwen-VL (visao)"
+        test_server "dolphin3"     8041 "Dolphin3.0"
+        test_server "lfm25"        8061 "LFM 2.5"
+        test_server "nanbeige"     8071 "Nanbeige4.2"
+        test_server "minicpm5"     8081 "MiniCPM5"
 
         print_summary
         ;;

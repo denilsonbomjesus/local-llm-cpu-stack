@@ -8,7 +8,7 @@ BASE=~/llm-stack
 # ============================================================
 # Dual-build paths:
 #   build/ReleaseOV → OpenVINO acelerado (Qwen, Ministral)
-#   build/CPU       → GGML nativo     (Gemma 2, modelos incompativeis)
+#   build/CPU       → GGML nativo     (modelos sem OpenVINO)
 # ============================================================
 LLAMA_OV="$BASE/llama.cpp/build/ReleaseOV/bin/llama-server"
 LLAMA_CPU="$BASE/llama.cpp/build/CPU/bin/llama-server"
@@ -28,28 +28,17 @@ unset _SAVED_ARGS
 
 # ------------------------------------------------------------
 # Device mapping FINAL - validado no i5-1235U Iris Xe:
-#   ⚠️  Qwen-Text                             → OpenVINO GPU (stateless)
-#                                            → encoding bug em alguns modelos
 #   ❌  Qwen-Coder (qwen-coder)              → OpenVINO corrompe saida     → GGML nativo CPU
 #   ❌  Qwen-VL   (vision)                   → OpenVINO shape mismatch     → GGML nativo CPU
-#   ❌  Ministral (agent, vision)            → OpenVINO incompativel       → GGML nativo CPU
-#   ❌  Gemma 2                              → OpenVINO incompativel       → GGML nativo CPU
 #   ✅  Bonsai 27B 1-bit                     → Q1_0 nativo (mainline)     → GGML nativo CPU
 #   ✅  Ternary Bonsai 27B                   → Q2_0_g64 nativo (mainline) → GGML nativo CPU
 #
 # Conclusao: OpenVINO tem bugs de encoding/shape nos builds atuais.
-# So Qwen-Text funciona (parcialmente) no GPU. Demais vao para CPU.
+# Nenhum modelo atual usa OpenVINO. Todos vao para GGML nativo CPU.
 # ------------------------------------------------------------
 configure_openvino_for_model() {
     local model_type="$1"
     case "$model_type" in
-        qwen-text)
-            # Qwen-Text: OpenVINO GPU com stateless (pode ter encoding bug)
-            export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
-            export GGML_OPENVINO_STATEFUL_EXECUTION=0
-            LLAMA="$LLAMA_OV"
-            echo "ℹ️  Qwen-Text: OpenVINO GPU (stateless)"
-            ;;
         qwen-coder)
             # Qwen-Coder: OpenVINO GPU corrompe saida de texto
             unset GGML_OPENVINO_DEVICE
@@ -63,13 +52,6 @@ configure_openvino_for_model() {
             unset GGML_OPENVINO_STATEFUL_EXECUTION
             LLAMA="$LLAMA_CPU"
             echo "ℹ️  Qwen-VL: OpenVINO incompativel. Usando GGML nativo (CPU)."
-            ;;
-        ministral-agent|ministral-vision)
-            # Ministral: OpenVINO INCOMPATIVEL (GPU crash + CPU shape mismatch)
-            unset GGML_OPENVINO_DEVICE
-            unset GGML_OPENVINO_STATEFUL_EXECUTION
-            LLAMA="$LLAMA_CPU"
-            echo "ℹ️  Ministral: OpenVINO incompativel. Usando GGML nativo (CPU)."
             ;;
         bonsai-27b|bonsai-27b-nothink)
             # Bonsai 27B 1-bit: Q1_0_g128 — mainline llama.cpp
@@ -101,14 +83,6 @@ configure_openvino_for_model() {
             LLAMA="$LLAMA_CPU"
             echo "ℹ️  Dolphin3.0 (Llama3.2-3B): GGML nativo CPU (Q4_K_M)"
             ;;
-        lexi8b)
-            # Lexi-Llama-3-8B-Uncensored: Llama 3 8B uncensored, Q4_K_M
-            # 4.6 GB, modelo grande e versátil
-            unset GGML_OPENVINO_DEVICE
-            unset GGML_OPENVINO_STATEFUL_EXECUTION
-            LLAMA="$LLAMA_CPU"
-            echo "ℹ️  Lexi-8B (Llama-3-8B-Uncensored): GGML nativo CPU (Q4_K_M)"
-            ;;
         lfm25)
             # Liquid LFM 2.5-1.2B-Instruct: 1.2B params, Q8_0 (8-bit)
             # 1.2 GB, máxima qualidade, excelente para código e raciocínio
@@ -127,11 +101,11 @@ configure_openvino_for_model() {
             echo "ℹ️  Nanbeige4.2-3B: GGML nativo CPU (Q4_K_M)"
             ;;
         *)
-            # Gemma 2 e outros: OpenVINO INCOMPATIVEL
+            # Fallback: modelos sem configuracao especifica vao para CPU
             unset GGML_OPENVINO_DEVICE
             unset GGML_OPENVINO_STATEFUL_EXECUTION
             LLAMA="$LLAMA_CPU"
-            echo "ℹ️  Gemma 2: OpenVINO incompativel. Usando GGML nativo (CPU)."
+            echo "ℹ️  Modelo: GGML nativo CPU (fallback)."
             ;;
     esac
 }
@@ -149,11 +123,7 @@ server_cmd_for() {
     local model="$1"
     local llama="$LLAMA"
     case "$model" in
-        qwen-text)  echo "$llama -m $BASE/models/text/qwen2.5-1.5b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8001" ;;
-        gemma2)     echo "$llama -m $BASE/models/text/gemma-2-2b-it-abliterated-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8002" ;;
         qwen-coder) echo "$llama -m $BASE/models/code/qwen2.5-coder-3b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8003" ;;
-        ministral-agent) echo "$llama -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8004" ;;
-        ministral-vision) echo "$llama -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf --mmproj $BASE/models/code/ministral-3-3b-instruct-2512-mmproj-f16.gguf -t $THREADS -c $CTX -b $BATCH --port 8005" ;;
         vision)     echo "$llama -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf -t $THREADS -c $CTX --port 8010" ;;
         bonsai-27b)           echo "$llama -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --port 8011" ;;
         bonsai-27b-nothink)    echo "$llama -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8013" ;;
@@ -168,7 +138,6 @@ server_cmd_for() {
         gemma4-e4b-vision)      echo "$llama -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --port 8032" ;;
         gemma4-e4b-vision-nothink) echo "$llama -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8034" ;;
         dolphin3)  echo "$llama -m $BASE/models/text/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --port 8041" ;;
-        lexi8b)    echo "$llama -m $BASE/models/text/Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --port 8051" ;;
         lfm25)    echo "$llama -m $BASE/models/code/LFM2.5-1.2B-Instruct-Q8_0.gguf -t $THREADS -c $CTX -b $BATCH --port 8061" ;;
         nanbeige) echo "$llama -m $BASE/models/code/Nanbeige4.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --port 8071" ;;
         nanbeige-nothink) echo "$llama -m $BASE/models/code/Nanbeige4.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8073" ;;
@@ -206,7 +175,7 @@ start_model() {
     local cmd
     cmd=$(server_cmd_for "$model")
     if [ -z "$cmd" ]; then
-        echo "Uso: ./manage.sh start {qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lexi8b|lfm25|nanbeige|nanbeige-nothink|minicpm5|minicpm5-nothink|gateway}"
+        echo "Uso: ./manage.sh start {qwen-coder|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lfm25|nanbeige|nanbeige-nothink|minicpm5|minicpm5-nothink|gateway}"
         return
     fi
 
@@ -248,7 +217,7 @@ function stop_model() {
 
 function status() {
     echo "--- Status dos Modelos (Sessões TMUX) ---"
-    tmux ls 2>/dev/null | grep -E "qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lexi8b|lfm25|nanbeige|nanbeige-nothink|minicpm5|minicpm5-nothink|gateway" || echo "Nenhum serviço rodando no momento."
+    tmux ls 2>/dev/null | grep -E "qwen-coder|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lfm25|nanbeige|nanbeige-nothink|minicpm5|minicpm5-nothink|gateway" || echo "Nenhum serviço rodando no momento."
 }
 
 # Lógica Principal do Script
@@ -261,7 +230,7 @@ case $1 in
         ;;
     stop-all)
         echo "Finalizando todos os serviços..."
-        for s in qwen-text gemma2 qwen-coder ministral-agent ministral-vision vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gemma4-e2b gemma4-e2b-nothink gemma4-e2b-vision gemma4-e2b-vision-nothink gemma4-e4b gemma4-e4b-nothink gemma4-e4b-vision gemma4-e4b-vision-nothink dolphin3 lexi8b lfm25 nanbeige nanbeige-nothink minicpm5 minicpm5-nothink gateway; do
+        for s in qwen-coder vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gemma4-e2b gemma4-e2b-nothink gemma4-e2b-vision gemma4-e2b-vision-nothink gemma4-e4b gemma4-e4b-nothink gemma4-e4b-vision gemma4-e4b-vision-nothink dolphin3 lfm25 nanbeige nanbeige-nothink minicpm5 minicpm5-nothink gateway; do
             stop_model $s
         done
         ;;
@@ -281,11 +250,7 @@ case $1 in
         echo "  status          - Lista os serviços que estão rodando no momento"
         echo ""
         echo "ALVOS DISPONÍVEIS (Modelos & Serviços):"
-        echo "  qwen-text           - Chat e Lógica (Qwen 2.5 1.5B) [Porta 8001]"
-        echo "  gemma2              - Chat Geral Sem Censura (Gemma 2 2B) [Porta 8002]"
         echo "  qwen-coder          - Especialista em Programação (Qwen) [Porta 8003]"
-        echo "  ministral-agent     - Agente e Código (Ministral 3 3B) [Porta 8004]"
-        echo "  ministral-vision    - Texto + Visão (Ministral 3 3B) [Porta 8005]"
         echo "  vision              - Servidor de Visão (Qwen-VL) [Porta 8010]"
         echo "  bonsai-27b           - 27B 1-bit (89.5% FP16) ~4-8 tok/s [Porta 8011]"
         echo "  bonsai-27b-nothink    - 27B 1-bit (thinking OFF) resposta direta [Porta 8013]"
@@ -300,7 +265,6 @@ case $1 in
         echo "  gemma4-e4b-vision        - Gemma 4 E4B + visão (mmproj) [Porta 8032]"
         echo "  gemma4-e4b-vision-nothink - Gemma 4 E4B visão (thinking OFF) [Porta 8034]"
         echo "  dolphin3             - Dolphin3.0 Llama3.2-3B Q4_K_M [Porta 8041]"
-        echo "  lexi8b               - Lexi-Llama-3-8B-Uncensored Q4_K_M [Porta 8051]"
         echo "  lfm25                - Liquid LFM 2.5 1.2B Q8_0 [Porta 8061]"
         echo "  nanbeige             - Nanbeige4.2-3B Q4_K_M [Porta 8071]"
         echo "  nanbeige-nothink     - Nanbeige4.2-3B (thinking OFF) resposta direta [Porta 8073]"
@@ -324,13 +288,12 @@ case $1 in
         echo "  ./manage.sh start gemma4-e4b-vision        # Gemma 4 E4B + visão (5.9 GB)"
         echo "  ./manage.sh start gemma4-e4b-vision-nothink # Gemma 4 E4B (thinking OFF) + visão"
         echo "  ./manage.sh start dolphin3        # Dolphin3.0 Llama3.2-3B (1.9 GB) [Porta 8041]"
-        echo "  ./manage.sh start lexi8b          # Lexi-Llama-3-8B-Uncensored (4.6 GB) [Porta 8051]"
         echo "  ./manage.sh start lfm25           # Liquid LFM 2.5 1.2B Q8_0 (1.2 GB) [Porta 8061]"
         echo "  ./manage.sh start nanbeige        # Nanbeige4.2-3B Q4_K_M (2.4 GB) [Porta 8071]"
         echo "  ./manage.sh start nanbeige-nothink # Nanbeige4.2-3B (thinking OFF) [Porta 8073]"
         echo "  ./manage.sh start minicpm5         # MiniCPM5-1B Nemotron-DPO Q8_0 (1.1 GB) [Porta 8081]"
         echo "  ./manage.sh start minicpm5-nothink  # MiniCPM5-1B (thinking OFF) [Porta 8083]"
-        echo "  ./manage.sh stop gemma2           # Para finalizar modelo"
+        echo "  ./manage.sh stop nanbeige         # Para finalizar modelo específico"
         echo "  ./manage.sh stop-all              # Para finalizar todos os modelos"
         echo "  ./manage.sh status                # Para ver o que está ativo"
         echo "================================================================="

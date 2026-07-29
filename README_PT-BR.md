@@ -22,8 +22,8 @@ O projeto está organizado para manter modelos, servidores e scripts isolados:
 ~/llm-stack
   ├── llama.cpp/               # Código-fonte e binários compilados
   ├── models/                  # Arquivos .gguf organizados por categoria
-  │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B), Dolphin3.0
-  │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512, LFM 2.5, Nanbeige4.2
+  │   ├── text/                # Gemma 4 (E2B/E4B), Dolphin3.0
+  │   ├── code/                # Qwen2.5-Coder, LFM 2.5, Nanbeige4.2, MiniCPM5-1B
   │   ├── vision/              # Qwen2.5-VL (Modelo + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # Servidor Python para o Qwen-VL
@@ -141,7 +141,7 @@ fi
 export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
 ```
 
-> ⚠️ **Importante sobre modelos Qwen**: Os modelos Qwen (Qwen2.5, Qwen-Coder, Qwen-VL) têm uma limitação conhecida no backend OpenVINO: a execução **stateful na GPU falha**. Os scripts `manage.sh` e `chat.sh` já incluem uma detecção automática que define `GGML_OPENVINO_STATEFUL_EXECUTION=0` para modelos Qwen e `=1` para os demais (Ministral, Gemma).
+> ⚠️ **Importante sobre modelos Qwen**: Os modelos Qwen (Qwen2.5, Qwen-Coder, Qwen-VL) têm uma limitação conhecida no backend OpenVINO: a execução **stateful na GPU falha**. Os scripts `manage.sh` e `chat.sh` já incluem uma detecção automática que define `GGML_OPENVINO_STATEFUL_EXECUTION=0` para modelos Qwen e `=1` para os demais modelos.
 
 ***
 ## 📥 3. Download dos modelos (WSL2)
@@ -172,52 +172,7 @@ wget -O Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf \
   https://huggingface.co/bartowski/Dolphin3.0-Llama3.2-3B-GGUF/resolve/main/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf
 ```
 
-#### Lexi-Llama-3-8B-Uncensored (Q4_K_M)
 
-O **Lexi-Llama-3-8B-Uncensored** é um modelo Llama 3 8B fine-tuned pela comunidade para ser uncensored e versátil. Ótimo para tarefas complexas, raciocínio e respostas sem restrições.
-
-Repo: `Orenguteng/Llama-3-8B-Lexi-Uncensored-GGUF`. [huggingface](https://huggingface.co/Orenguteng/Llama-3-8B-Lexi-Uncensored-GGUF)
-
-- **Arquivo:** `Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf` (4.6 GB)
-- **Qualidade:** Excelente para tarefas complexas, raciocínio, coding, chat uncensored
-- **RAM (4K ctx):** ~6.1 GB ⚠️ apertado em 8 GB WSL2
-- **Velocidade CPU (i5):** ~8-15 tok/s
-- **Sem thinking mode** (Llama 3 base, sem tokens especiais de raciocínio)
-
-```bash
-cd ~/llm-stack/models/text
-
-wget -O Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf \
-  https://huggingface.co/Orenguteng/Llama-3-8B-Lexi-Uncensored-GGUF/resolve/main/Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf
-```
-
-#### Qwen2.5‑1.5B‑Instruct‑Q4_K_M.gguf
-
-Repo oficial GGUF: `Qwen/Qwen2.5-1.5B-Instruct-GGUF`. [huggingface](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)
-
-Arquivo:
-
-- `qwen2.5-1.5b-instruct-q4_k_m.gguf` (4‑bit K‑quant, recomendado para laptops). [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
-
-```bash
-cd ~/llm-stack/models/text
-wget -O qwen2.5-1.5b-instruct-q4_k_m.gguf \
-  https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf
-```
-
-#### Gemma-2-2b-it-abliterated-q4_k_m.gguf
-
-Repo: `bartowski/gemma-2-2b-it-abliterated-GGUF`. [huggingface](https://huggingface.co/bartowski/gemma-2-2b-it-abliterated-GGUF/resolve/main/gemma-2-2b-it-abliterated-Q4_K_M.gguf)
-
-Arquivo:
-
-- `Gemma-2-2b-it-abliterated-gguf` (~1.6 GB). [huggingface](https://huggingface.co/bartowski/gemma-2-2b-it-abliterated-GGUF/resolve/main/gemma-2-2b-it-abliterated-Q4_K_M.gguf)
-
-```bash
-cd ~/llm-stack/models/text
-wget -O gemma-2-2b-it-abliterated-q4_k_m.gguf \
-  https://huggingface.co/bartowski/gemma-2-2b-it-abliterated-GGUF/resolve/main/gemma-2-2b-it-abliterated-Q4_K_M.gguf
-```
 ### 3.2. Código
 #### Qwen2.5‑Coder‑3B‑Instruct‑Q4_K_M.gguf
 
@@ -231,19 +186,6 @@ wget -O qwen2.5-coder-3b-instruct-q4_k_m.gguf \
   https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf
 ```
 
-#### Ministral-3-3b-instruct-2512-q4_k_m.gguf
-
-Repo: `unsloth/Ministral-3-3B-Instruct-2512-GGUF`. [huggingface](https://huggingface.co/unsloth/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/Ministral-3-3B-Instruct-2512-Q4_K_M.gguf)
-
-Arquivo:
-
-- `Ministral-3-3B-Instruct-2512-GGUF` (Q4_K_M = 4.5 bpw, “balanced quality – recommended”). [huggingface](https://huggingface.co/unsloth/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/Ministral-3-3B-Instruct-2512-Q4_K_M.gguf)
-
-```bash
-cd ~/llm-stack/models/code
-wget -O ministral-3-3b-instruct-2512-q4_k_m.gguf \
-  https://huggingface.co/unsloth/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/Ministral-3-3B-Instruct-2512-Q4_K_M.gguf
-```
 
 #### Liquid LFM 2.5-1.2B-Instruct (Q8_0)
 
@@ -305,16 +247,7 @@ wget -O MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf \
   https://huggingface.co/ewinregirgojr/MiniCPM5-1B-Agentic-Tooluse-GGUF/resolve/main/MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf
 ```
 
-#### Download do mmproj 
-O arquivo é os "olhos" do Ministral-3-3B-Instruct-2512.
-
-Execute este comando:
-```bash
-wget -O ~/llm-stack/models/code/ministral-3-3b-instruct-2512-mmproj-f16.gguf \
-  https://huggingface.co/unsloth/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/mmproj-F16.gguf
-```
-
-### 3.3. Visão – 
+### 3.3. Visão 
 
 #### Qwen2.5‑VL‑3B‑Abliterated‑Caption‑it (GGUF)
 
@@ -399,7 +332,7 @@ wget -O gemma-4-E4B-it-mmproj.gguf \
 
 ***
 ## 🧠 2b. O que é Q4_K_M / IQ4_XS?
-- **Q4_K_M**: quantização 4‑bit em “super‑blocos” com estatísticas por bloco, 4.5 bits por peso, trade‑off ótimo de qualidade vs RAM – a opção normalmente recomendada para uso geral. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)- **IQ4_XS**: variante “imatrix” super‑compacta 4‑bit, com compressão adicional e pequena perda de qualidade, muito usada em modelos pequenos para reduzir footprint.
+- **Q4_K_M**: quantização 4‑bit em “super‑blocos” com estatísticas por bloco, 4.5 bits por peso, trade‑off ótimo de qualidade vs RAM – a opção normalmente recomendada para uso geral. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)- **IQ4_XS**: variante “imatrix” super‑compacta 4‑bit, com compressão adicional e pequena perda de qualidade, muito usada em modelos pequenos para reduzir footprint.
 
 Alternativas:
 
@@ -419,10 +352,7 @@ No terminal (WSL2), execute:
 ```
 
 **Opções disponíveis:**
--  `qwen-text`          → Porta 8001 (Qwen 2.5 1.5B)
-- `gemma2`             → Porta 8002 (Gemma 2 2B)- `qwen-coder`         → Porta 8003 (Qwen Coder 3B Q4_K_M ~12-20 tok/s)
-- `ministral-agent`    → Porta 8004 (Ministral 3 3B)
-- `ministral-vision`   → Porta 8005 (Ministral 3 3B)
+- `qwen-coder`         → Porta 8003 (Qwen Coder 3B Q4_K_M ~12-20 tok/s)
 - `vision`             → Porta 8010 (Qwen-VL Python Server)
 - `bonsai-27b`         → Porta 8011 (Bonsai 27B 1-bit ~4-8 tok/s)
 - `bonsai-27b-nothink` → Porta 8013 (Bonsai 27B, thinking OFF)
@@ -435,7 +365,7 @@ No terminal (WSL2), execute:
 - `gemma4-e4b`        → Porta 8022 (Gemma 4 E4B 4.5B ~10-15 tok/s, texto puro)
 - `gemma4-e4b-nothink`→ Porta 8024 (Gemma 4 E4B, thinking OFF)
 - `dolphin3`          → Porta 8041 (Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s)
-- `lexi8b`            → Porta 8051 (Lexi-Llama-3-8B-Uncensored Q4_K_M ~8-15 tok/s)
+
 - `lfm25`             → Porta 8061 (Liquid LFM 2.5 1.2B Q8_0 ~25-40 tok/s)
 - `nanbeige`          → Porta 8071 (Nanbeige4.2-3B Q4_K_M ~18-30 tok/s)
 - `nanbeige-nothink`   → Porta 8073 (Nanbeige4.2-3B, thinking OFF)
@@ -448,7 +378,7 @@ No terminal (WSL2), execute:
 ### 4.2. Comandos úteis do Manager
 - `./scripts/manage.sh status`      → Vê o que está rodando.
 - `./scripts/manage.sh stop-all`    → Mata todos os serviços e libera a RAM.
-- `./scripts/manage.sh stop gemma2` → Para apenas um modelo específico.
+
 
 ***
 ## 🌐 5. API HTTP OpenAI‑like do `llama-server`
@@ -460,7 +390,7 @@ Teste rápido (no WSL2):
 curl http://localhost:8001/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "qwen2.5-1.5b-instruct-q4_k_m",
+    "model": "qwen2.5-coder-3b",
     "messages": [
       {"role": "user", "content": "Resuma em 3 pontos a função de um sistema operacional."}
     ],
@@ -562,25 +492,9 @@ pip install fastapi uvicorn[standard] httpx pyyaml
 
 ```yaml
 models:
-  qwen2.5-1.5b-instruct:
-    type: text
-    endpoint: http://localhost:8001
-
-  gemma-2-2b-abliterated:
-    type: text
-    endpoint: http://localhost:8002
-
   qwen2.5-coder-3b:
     type: code
     endpoint: http://localhost:8003
-
-  ministral-agent:
-    type: code
-    endpoint: http://localhost:8004
-
-  ministral-vision:
-    type: vision
-    endpoint: http://localhost:8005
 
   qwen2.5-vl-3b-abliterated:
     type: vision
@@ -761,7 +675,7 @@ tmux new-session -d -s router \
 curl http://localhost:9000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "qwen2.5-1.5b-instruct",
+    "model": "qwen2.5-coder-3b",
     "messages": [
       {"role": "system", "content": "Você é um assistente técnico conciso."},
       {"role": "user", "content": "Explique brevemente o que é uma syscall."}
@@ -770,12 +684,12 @@ curl http://localhost:9000/v1/chat/completions \
     "temperature": 0.4
   }' | jq
 ```
-### 8.2. Chat com Gemma-2-2b-abliterated
+### 8.2. Chat com Nanbeige4.2-3B
 ```bash
 curl http://localhost:9000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gemma-2-2b-abliterated",
+    "model": "nanbeige4.2-3b",
     "messages": [
       {"role": "user", "content": "Vamos conversar sobre design de sistemas distribuídos."}
     ],
@@ -811,7 +725,7 @@ curl http://localhost:9000/v1/chat/completions \
 
 **Memória por modelo** (aprox):
 
-- Qwen2.5‑1.5B‑Instruct‑Q4_K_M → ~1.1 GB + KV‑cache (até ~2–3 GB com contexto grande). [huggingface](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)- **Qwen2.5‑Coder‑3B‑Q4_K_M** → ~2.0 GB + ~1 GB overhead + KV cache (~3.0 GB total em 4K ctx)
+- **Qwen2.5‑Coder‑3B‑Q4_K_M** → ~2.0 GB + ~1 GB overhead + KV cache (~3.0 GB total em 4K ctx)
 - **Bonsai 27B 1-bit** → ~3.9 GB + ~1.3 GB overhead + KV cache (~5.2 GB total em 4K ctx)
 - **Ternary Bonsai 27B** → ~7.2 GB + ~1.2 GB overhead + KV cache (~8.4 GB total em 4K ctx)
 - **Gemma 4 E2B (texto)** → ~3.2 GB + ~1 GB overhead + KV cache (~4.2 GB total em 4K ctx)
@@ -828,7 +742,7 @@ Para medir performance real:
 ```bash
 # uma geração de teste com estatísticas
 ./llama.cpp/build/ReleaseOV/bin/llama-cli \
-  -m ./models/text/qwen2.5-1.5b-instruct-q4_k_m.gguf \
+  -m ./models/code/qwen2.5-coder-3b-instruct-q4_k_m.gguf \
   -p "Teste de throughput." -n 256 -t 8 -c 4096 -b 256 -ngl 0 \
   --log-disable
 ```
@@ -844,8 +758,8 @@ No WSL2, a estrutura consolidada é:
 ~/llm-stack
   ├── llama.cpp/               # Binários compilados (llama-server, llama-cli em build/ReleaseOV/bin/)os compilados (llama-server, llama-cli)
   ├── models/
-  │   ├── text/                # .gguf de texto (Qwen, Gemma2, Gemma 4 E2B/E4B)
-  │   ├── code/                # .gguf de código (Qwen Coder, Ministral, Ministral + mmproj, LFM 2.5, Nanbeige4.2)
+  │   ├── text/                # .gguf de texto (Gemma 4 E2B/E4B, Dolphin3.0)
+  │   ├── code/                # .gguf de código (Qwen Coder, LFM 2.5, Nanbeige4.2, MiniCPM5)
   │   ├── vision/              # .gguf de visão (Qwen-VL + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # venv + qwen_vl_server.py
@@ -901,6 +815,6 @@ Se você quiser conversar com um modelo diretamente pelo terminal (sem passar pe
   - Compare com caminho em `-m`.  
 - Se baixar de novo, confira se `wget` não salvou com nome diferente (`?download=1` etc.).
 ### 12.5. Gateway retornando 400 “Unknown model”
-- O campo `"model"` no JSON deve bater com a chave em `models.yaml` (`qwen2.5-1.5b-instruct`, `qwen2.5-coder-3b`, etc.).
+- O campo `"model"` no JSON deve bater com a chave em `models.yaml` (`qwen2.5-coder-3b`, `nanbeige4.2-3b`, `bonsai-27b-1bit`, etc.).
 ### 12.6. Qwen‑VL lento
 - VLMs são mais pesados que LLMs puros; use para tarefas pontuais (captioning, não chat longo). [huggingface](https://huggingface.co/prithivMLmods/Qwen2.5-VL-Abliterated-Caption-GGUF)

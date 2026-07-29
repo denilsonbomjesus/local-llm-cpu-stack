@@ -8,7 +8,7 @@ BASE=~/llm-stack
 # ============================================================
 # Dual-build paths:
 #   build/ReleaseOV → OpenVINO acelerado (Qwen, Ministral)
-#   build/CPU       → GGML nativo (Gemma 2 e outros nao suportados)
+#   build/CPU       → GGML nativo (modelos sem OpenVINO)
 # ============================================================
 CLI_OV="$BASE/llama.cpp/build/ReleaseOV/bin/llama-cli"
 CLI_CPU="$BASE/llama.cpp/build/CPU/bin/llama-cli"
@@ -37,28 +37,17 @@ export LC_ALL=C.UTF-8
 # ============================================================
 # ------------------------------------------------------------
 # Device mapping FINAL - validado no i5-1235U Iris Xe:
-#   ⚠️  Qwen-Text                             → OpenVINO GPU (stateless)
-#                                            → encoding bug em alguns modelos
 #   ❌  Qwen-Coder (qwen-coder)              → OpenVINO corrompe saida     → GGML nativo CPU
 #   ❌  Qwen-VL   (vision)                   → OpenVINO shape mismatch     → GGML nativo CPU
-#   ❌  Ministral (agent, vision)            → OpenVINO incompativel       → GGML nativo CPU
-#   ❌  Gemma 2                              → OpenVINO incompativel       → GGML nativo CPU
 #   ✅  Bonsai 27B 1-bit                     → Q1_0 nativo (mainline)     → GGML nativo CPU
 #   ✅  Ternary Bonsai 27B                   → Q2_0_g64 nativo (mainline) → GGML nativo CPU
 #
 # Conclusao: OpenVINO tem bugs de encoding/shape nos builds atuais.
-# So Qwen-Text funciona (parcialmente) no GPU. Demais vao para CPU.
+# Nenhum modelo atual usa OpenVINO. Todos vao para GGML nativo CPU.
 # ------------------------------------------------------------
 configure_openvino_for_model() {
     local model_type="$1"
     case "$model_type" in
-        qwen-text)
-            # Qwen-Text: OpenVINO GPU com stateless (pode ter encoding bug)
-            export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
-            export GGML_OPENVINO_STATEFUL_EXECUTION=0
-            CLI="$CLI_OV"
-            echo "ℹ️  Qwen-Text: OpenVINO GPU (stateless)"
-            ;;
         qwen-coder)
             # Qwen-Coder: OpenVINO GPU corrompe saida de texto
             # O backend OpenVINO GPU decodifica tokens incorretamente,
@@ -76,13 +65,6 @@ configure_openvino_for_model() {
             unset GGML_OPENVINO_STATEFUL_EXECUTION
             CLI="$CLI_CPU"
             echo "ℹ️  Qwen-VL: OpenVINO incompativel. Usando GGML nativo (CPU)."
-            ;;
-        ministral-agent|ministral-vision)
-            # Ministral: OpenVINO INCOMPATIVEL (GPU crash + CPU shape mismatch)
-            unset GGML_OPENVINO_DEVICE
-            unset GGML_OPENVINO_STATEFUL_EXECUTION
-            CLI="$CLI_CPU"
-            echo "ℹ️  Ministral: OpenVINO incompativel. Usando GGML nativo (CPU)."
             ;;
         bonsai-27b|bonsai-27b-nothink)
             # Bonsai 27B 1-bit: Q1_0_g128 — suportado nativamente no mainline llama.cpp
@@ -118,14 +100,6 @@ configure_openvino_for_model() {
             CLI="$CLI_CPU"
             echo "ℹ️  Dolphin3.0 (Llama3.2-3B): GGML nativo CPU (Q4_K_M)"
             ;;
-        lexi8b)
-            # Lexi-Llama-3-8B-Uncensored: Llama 3 8B uncensored, Q4_K_M
-            # 4.6 GB, modelo grande e versátil para tarefas complexas
-            unset GGML_OPENVINO_DEVICE
-            unset GGML_OPENVINO_STATEFUL_EXECUTION
-            CLI="$CLI_CPU"
-            echo "ℹ️  Lexi-8B (Llama-3-8B-Uncensored): GGML nativo CPU (Q4_K_M)"
-            ;;
         lfm25)
             # Liquid LFM 2.5-1.2B-Instruct: 1.2B params, Q8_0 (8-bit)
             # 1.2 GB, máxima qualidade, excelente para código e raciocínio
@@ -144,11 +118,11 @@ configure_openvino_for_model() {
             echo "ℹ️  Nanbeige4.2-3B: GGML nativo CPU (Q4_K_M)"
             ;;
         *)
-            # Gemma 2 e outros: OpenVINO INCOMPATIVEL
+            # Fallback: modelos sem configuracao especifica vao para CPU
             unset GGML_OPENVINO_DEVICE
             unset GGML_OPENVINO_STATEFUL_EXECUTION
             CLI="$CLI_CPU"
-            echo "ℹ️  Gemma 2: OpenVINO incompativel. Usando GGML nativo (CPU)."
+            echo "ℹ️  Modelo: GGML nativo CPU (fallback)."
             ;;
     esac
 }
@@ -166,11 +140,7 @@ chat_cmd_for() {
     local model="$1"
     local cli="$CLI"
     case "$model" in
-        qwen-text)  echo "$cli -m $BASE/models/text/qwen2.5-1.5b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
-        gemma2)     echo "$cli -m $BASE/models/text/gemma-2-2b-it-abliterated-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         qwen-coder) echo "$cli -m $BASE/models/code/qwen2.5-coder-3b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
-        ministral-agent) echo "$cli -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
-        ministral-vision) echo "$cli -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf --mmproj $BASE/models/code/ministral-3-3b-instruct-2512-mmproj-f16.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         vision)     echo "$cli -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf -t $THREADS -c $CTX" ;;
         bonsai-27b)           echo "$cli -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         bonsai-27b-nothink)    echo "$cli -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
@@ -185,7 +155,6 @@ chat_cmd_for() {
         gemma4-e4b-vision)      echo "$cli -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         gemma4-e4b-vision-nothink) echo "$cli -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
         dolphin3)  echo "$cli -m $BASE/models/text/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH" ;;
-        lexi8b)    echo "$cli -m $BASE/models/text/Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         lfm25)    echo "$cli -m $BASE/models/code/LFM2.5-1.2B-Instruct-Q8_0.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         nanbeige) echo "$cli -m $BASE/models/code/Nanbeige4.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         minicpm5) echo "$cli -m $BASE/models/code/MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf -t $THREADS -c $CTX -b $BATCH" ;;
@@ -229,11 +198,7 @@ function show_help() {
     echo "Uso: ./chat.sh [modelo]"
     echo ""
     echo "MODELOS DISPONÍVEIS:"
-    echo "  qwen-text          - Chat rápido Qwen 2.5"
-    echo "  gemma2             - Chat inteligente Gemma 2"
     echo "  qwen-coder         - Chat focado em programação"
-    echo "  ministral-agent    - Chat inteligente/código (Ministral)"
-    echo "  ministral-vision   - Chat inteligente/Visão (Ministral)"
     echo "  vision             - Chat de visão (Análise de imagens via Terminal)"
     echo "  bonsai-27b           - 27B 1-bit (89.5% FP16) ~4-8 tok/s [3.8 GB]"
     echo "  bonsai-27b-nothink    - 27B 1-bit (thinking OFF) resposta direta [3.8 GB]"
@@ -248,7 +213,6 @@ function show_help() {
     echo "  gemma4-e4b-vision        - Gemma 4 E4B + visão (mmproj) [4.9 GB + 1 GB]"
     echo "  gemma4-e4b-vision-nothink - Gemma 4 E4B visão (thinking OFF) [4.9 GB + 1 GB]"
     echo "  dolphin3             - Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s [1.9 GB]"
-    echo "  lexi8b               - Lexi-Llama-3-8B-Uncensored Q4_K_M ~8-15 tok/s [4.6 GB]"
     echo "  lfm25                - Liquid LFM 2.5 1.2B Q8_0 ~25-40 tok/s [1.2 GB]"
     echo "  nanbeige             - Nanbeige4.2-3B Q4_K_M ~18-30 tok/s [2.4 GB]"
     echo "  nanbeige-nothink     - Nanbeige4.2-3B (thinking OFF) resposta direta [2.4 GB]"

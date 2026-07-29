@@ -1,23 +1,7 @@
 models:
-  qwen2.5-1.5b-instruct:
-    type: text
-    endpoint: http://localhost:8001
-
-  gemma-2-2b-abliterated:
-    type: text
-    endpoint: http://localhost:8002
-
   qwen2.5-coder-3b:
     type: code
     endpoint: http://localhost:8003
-
-  ministral-agent:
-    type: code
-    endpoint: http://localhost:8004
-
-  ministral-vision:
-    type: vision
-    endpoint: http://localhost:8005
 
   qwen2.5-vl-3b-abliterated:
     type: vision
@@ -74,10 +58,6 @@ models:
   dolphin3.0-llama3.2-3b:
     type: text
     endpoint: http://localhost:8041
-
-  lexi-llama-3-8b-uncensored:
-    type: text
-    endpoint: http://localhost:8051
 
   lfm2.5-1.2b-instruct:
     type: code
