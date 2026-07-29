@@ -35,6 +35,8 @@ models:
     endpoint: http://localhost:9000/v1/chat/completions
   lexi-llama-3-8b-uncensored:
     endpoint: http://localhost:9000/v1/chat/completions
+  lfm2.5-1.2b-instruct:
+    endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e4b-vision:
     endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e4b-vision-nothink:

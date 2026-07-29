@@ -23,7 +23,7 @@ The project is organized to keep models, servers, and scripts isolated:
   ├── llama.cpp/               # Source code and compiled binaries
   ├── models/                  # .gguf files organized by category
   │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B), Dolphin3.0, Lexi-8B
-  │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512
+  │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512, LFM 2.5
   │   ├── vision/              # Qwen2.5-VL (Model + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # Python server for Qwen-VL
@@ -245,6 +245,25 @@ wget -O ministral-3-3b-instruct-2512-q4_k_m.gguf \
   https://huggingface.co/unsloth/Ministral-3-3B-Instruct-2512-GGUF/resolve/main/Ministral-3-3B-Instruct-2512-Q4_K_M.gguf
 ```
 
+#### Liquid LFM 2.5-1.2B-Instruct (Q8_0)
+
+O **LFM 2.5 (Liquid Foundation Model 2.5)** é um modelo compacto de 1.2B parâmetros da LiquidAI, otimizado para código e raciocínio com qualidade excepcional graças à quantização Q8_0 (8-bit, quase sem perda).
+
+Repo: `LiquidAI/LFM2.5-1.2B-Instruct-GGUF`. [huggingface](https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF)
+
+- **Arquivo:** `LFM2.5-1.2B-Instruct-Q8_0.gguf` (1.2 GB)
+- **Qualidade:** Excelente (Q8_0 = quase perda zero, ~99% do FP16)
+- **RAM (4K ctx):** ~2.2 GB ✅ cabe com folga em 8 GB WSL2
+- **Velocidade CPU (i5):** ~25-40 tok/s ⚡ Muito rápido
+- **Sem thinking mode** (modelo base, sem tokens especiais de raciocínio)
+
+```bash
+cd ~/llm-stack/models/code
+
+wget -O LFM2.5-1.2B-Instruct-Q8_0.gguf \
+  https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/main/LFM2.5-1.2B-Instruct-Q8_0.gguf
+```
+
 #### Download mmproj for Ministral
 This file is the "eyes" of Ministral-3-3B-Instruct-2512.
 
@@ -424,6 +443,7 @@ In the terminal (WSL2), run:
 - `gemma4-e4b-nothink`→ Port 8024 (Gemma 4 E4B, thinking OFF)
 - `dolphin3`          → Port 8041 (Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s)
 - `lexi8b`            → Port 8051 (Lexi-Llama-3-8B-Uncensored Q4_K_M ~8-15 tok/s)
+- `lfm25`             → Port 8061 (Liquid LFM 2.5 1.2B Q8_0 ~25-40 tok/s)
 - `gemma4-e4b-vision` → Port 8032 (Gemma 4 E4B + visão)
 - `gemma4-e4b-vision-nothink`→ Port 8034 (Gemma 4 E4B + visão, thinking OFF)
 - `gateway`            → Port 9000 (The Central Router)
@@ -796,6 +816,7 @@ curl http://localhost:9000/v1/chat/completions \
 - **Gemma 4 E4B (visão)** → ~5.9 GB + ~1 GB overhead + KV cache (~6.9 GB total at 4K ctx)
 - **Dolphin3.0 Llama3.2-3B Q4_K_M** → ~1.9 GB + ~1 GB overhead + KV cache (~2.9 GB total at 4K ctx)
 - **Lexi-Llama-3-8B-Uncensored Q4_K_M** → ~4.6 GB + ~1.5 GB overhead + KV cache (~6.1 GB total at 4K ctx)
+- **LFM 2.5 1.2B Q8_0** → ~1.2 GB + ~1 GB overhead + KV cache (~2.2 GB total at 4K ctx)
 
 Com 16 GB você pode rodar **1 modelo Bonsai 27B + 2 modelos pequenos** simultaneamente, mas **nunca os dois Bonsai ao mesmo tempo** (cada um precisa de ~5-8 GB). Os Gemma 4 E2B/E4B são leves o suficiente para rodar lado a lado com outros modelos. [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
 
@@ -820,7 +841,7 @@ On WSL2, the consolidated structure is:
   ├── llama.cpp/               # Compiled binaries (llama-server, llama-cli em build/ReleaseOV/bin/)
   ├── models/
   │   ├── text/                # Text .gguf (Qwen, Gemma2, Gemma 4 E2B/E4B, Dolphin3.0, Lexi-8B)
-  │   ├── code/                # Code .gguf (Qwen Coder, Ministral, Ministral + mmproj)
+  │   ├── code/                # Code .gguf (Qwen Coder, Ministral, Ministral + mmproj, LFM 2.5)
   │   ├── vision/              # Vision .gguf (Qwen-VL + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # venv + qwen_vl_server.py

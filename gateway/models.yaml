@@ -79,6 +79,10 @@ models:
     type: text
     endpoint: http://localhost:8051
 
+  lfm2.5-1.2b-instruct:
+    type: code
+    endpoint: http://localhost:8061
+
   # phi-3.5-vision-ov:
   #   type: vision
   #   endpoint: http://<IP_Windows>:8011
