@@ -23,7 +23,7 @@ O projeto está organizado para manter modelos, servidores e scripts isolados:
   ├── llama.cpp/               # Código-fonte e binários compilados
   ├── models/                  # Arquivos .gguf organizados por categoria
   │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B), Dolphin3.0
-  │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512, LFM 2.5
+  │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512, LFM 2.5, Nanbeige4.2
   │   ├── vision/              # Qwen2.5-VL (Modelo + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # Servidor Python para o Qwen-VL
@@ -264,6 +264,26 @@ wget -O LFM2.5-1.2B-Instruct-Q8_0.gguf \
   https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct-GGUF/resolve/main/LFM2.5-1.2B-Instruct-Q8_0.gguf
 ```
 
+#### Nanbeige4.2-3B (Q4_K_M)
+
+O **Nanbeige4.2-3B** é um modelo da OWAO baseado no Nanbeige, com 3B parâmetros. Otimizado para código, raciocínio e tarefas gerais com qualidade excelente em Q4_K_M.
+
+Repo: `owao/Nanbeige4.2-3B-GGUF`. [huggingface](https://huggingface.co/owao/Nanbeige4.2-3B-GGUF)
+
+- **Arquivo:** `Nanbeige4.2-3B-Q4_K_M.gguf` (2.4 GB)
+- **Qualidade:** Muito boa (Q4_K_M = balanço qualidade/RAM)
+- **RAM (4K ctx):** ~3.4 GB ✅ cabe em 8 GB WSL2
+- **Velocidade CPU (i5):** ~18-30 tok/s ⚡ Rápido
+- **Com thinking mode** (tags `<think>`/`</think>` ativadas por padrão)
+- Use `nanbeige-nothink` para desligar o thinking e obter respostas mais diretas
+
+```bash
+cd ~/llm-stack/models/code
+
+wget -O Nanbeige4.2-3B-Q4_K_M.gguf \
+  https://huggingface.co/owao/Nanbeige4.2-3B-GGUF/resolve/main/Nanbeige4.2-3B-Q4_K_M.gguf
+```
+
 #### Download do mmproj 
 O arquivo é os "olhos" do Ministral-3-3B-Instruct-2512.
 
@@ -398,6 +418,8 @@ No terminal (WSL2), execute:
 - `dolphin3`          → Porta 8041 (Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s)
 - `lexi8b`            → Porta 8051 (Lexi-Llama-3-8B-Uncensored Q4_K_M ~8-15 tok/s)
 - `lfm25`             → Porta 8061 (Liquid LFM 2.5 1.2B Q8_0 ~25-40 tok/s)
+- `nanbeige`          → Porta 8071 (Nanbeige4.2-3B Q4_K_M ~18-30 tok/s)
+- `nanbeige-nothink`   → Porta 8073 (Nanbeige4.2-3B, thinking OFF)
 - `gemma4-e4b-vision` → Porta 8032 (Gemma 4 E4B + visão)
 - `gemma4-e4b-vision-nothink`→ Porta 8034 (Gemma 4 E4B + visão, thinking OFF)
 - `gateway`            → Porta 9000 (O Roteador Central)
@@ -777,6 +799,7 @@ curl http://localhost:9000/v1/chat/completions \
 - **Gemma 4 E4B (texto)** → ~4.9 GB + ~1 GB overhead + KV cache (~5.9 GB total em 4K ctx)
 - **Gemma 4 E4B (visão)** → ~4.9 GB + ~1 GB overhead + KV cache (~6.9 GB total em 4K ctx)
 - **LFM 2.5 1.2B Q8_0** → ~1.2 GB + ~1 GB overhead + KV cache (~2.2 GB total em 4K ctx)
+- **Nanbeige4.2-3B Q4_K_M** → ~2.4 GB + ~1 GB overhead + KV cache (~3.4 GB total em 4K ctx)
 
 Com 16 GB dá para rodar **3–4 modelos 1.5–3B** em Q4 simultâneos + sistema + n8n, desde que não exagere em contextos gigantes em todos ao mesmo tempo. [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
 
@@ -802,7 +825,7 @@ No WSL2, a estrutura consolidada é:
   ├── llama.cpp/               # Binários compilados (llama-server, llama-cli em build/ReleaseOV/bin/)os compilados (llama-server, llama-cli)
   ├── models/
   │   ├── text/                # .gguf de texto (Qwen, Gemma2, Gemma 4 E2B/E4B)
-  │   ├── code/                # .gguf de código (Qwen Coder, Ministral, Ministral + mmproj, LFM 2.5)
+  │   ├── code/                # .gguf de código (Qwen Coder, Ministral, Ministral + mmproj, LFM 2.5, Nanbeige4.2)
   │   ├── vision/              # .gguf de visão (Qwen-VL + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # venv + qwen_vl_server.py

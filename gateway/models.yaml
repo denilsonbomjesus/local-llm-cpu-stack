@@ -83,6 +83,14 @@ models:
     type: code
     endpoint: http://localhost:8061
 
+  nanbeige4.2-3b:
+    type: code
+    endpoint: http://localhost:8071
+
+  nanbeige4.2-3b-nothink:
+    type: code
+    endpoint: http://localhost:8073
+
   # phi-3.5-vision-ov:
   #   type: vision
   #   endpoint: http://<IP_Windows>:8011

@@ -117,6 +117,15 @@ configure_openvino_for_model() {
             LLAMA="$LLAMA_CPU"
             echo "ℹ️  LFM 2.5 (Liquid 1.2B): GGML nativo CPU (Q8_0)"
             ;;
+        nanbeige|nanbeige-nothink)
+            # Nanbeige4.2-3B: modelo compacto de 3B params da OWAO
+            # 2.4 GB, Q4_K_M, excelente para código e raciocínio
+            # Variante -nothink desliga reasoning tags (<think>...</think>)
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            LLAMA="$LLAMA_CPU"
+            echo "ℹ️  Nanbeige4.2-3B: GGML nativo CPU (Q4_K_M)"
+            ;;
         *)
             # Gemma 2 e outros: OpenVINO INCOMPATIVEL
             unset GGML_OPENVINO_DEVICE
@@ -161,6 +170,8 @@ server_cmd_for() {
         dolphin3)  echo "$llama -m $BASE/models/text/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --port 8041" ;;
         lexi8b)    echo "$llama -m $BASE/models/text/Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --port 8051" ;;
         lfm25)    echo "$llama -m $BASE/models/code/LFM2.5-1.2B-Instruct-Q8_0.gguf -t $THREADS -c $CTX -b $BATCH --port 8061" ;;
+        nanbeige) echo "$llama -m $BASE/models/code/Nanbeige4.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --port 8071" ;;
+        nanbeige-nothink) echo "$llama -m $BASE/models/code/Nanbeige4.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8073" ;;
         *)          echo "" ;;
     esac
 }
@@ -193,7 +204,7 @@ start_model() {
     local cmd
     cmd=$(server_cmd_for "$model")
     if [ -z "$cmd" ]; then
-        echo "Uso: ./manage.sh start {qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lexi8b|lfm25|gateway}"
+        echo "Uso: ./manage.sh start {qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lexi8b|lfm25|nanbeige|nanbeige-nothink|gateway}"
         return
     fi
 
@@ -235,7 +246,7 @@ function stop_model() {
 
 function status() {
     echo "--- Status dos Modelos (Sessões TMUX) ---"
-    tmux ls 2>/dev/null | grep -E "qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lexi8b|lfm25|gateway" || echo "Nenhum serviço rodando no momento."
+    tmux ls 2>/dev/null | grep -E "qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lexi8b|lfm25|nanbeige|nanbeige-nothink|gateway" || echo "Nenhum serviço rodando no momento."
 }
 
 # Lógica Principal do Script
@@ -248,7 +259,7 @@ case $1 in
         ;;
     stop-all)
         echo "Finalizando todos os serviços..."
-        for s in qwen-text gemma2 qwen-coder ministral-agent ministral-vision vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gemma4-e2b gemma4-e2b-nothink gemma4-e2b-vision gemma4-e2b-vision-nothink gemma4-e4b gemma4-e4b-nothink gemma4-e4b-vision gemma4-e4b-vision-nothink dolphin3 lexi8b lfm25 gateway; do
+        for s in qwen-text gemma2 qwen-coder ministral-agent ministral-vision vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gemma4-e2b gemma4-e2b-nothink gemma4-e2b-vision gemma4-e2b-vision-nothink gemma4-e4b gemma4-e4b-nothink gemma4-e4b-vision gemma4-e4b-vision-nothink dolphin3 lexi8b lfm25 nanbeige nanbeige-nothink gateway; do
             stop_model $s
         done
         ;;
@@ -289,6 +300,8 @@ case $1 in
         echo "  dolphin3             - Dolphin3.0 Llama3.2-3B Q4_K_M [Porta 8041]"
         echo "  lexi8b               - Lexi-Llama-3-8B-Uncensored Q4_K_M [Porta 8051]"
         echo "  lfm25                - Liquid LFM 2.5 1.2B Q8_0 [Porta 8061]"
+        echo "  nanbeige             - Nanbeige4.2-3B Q4_K_M [Porta 8071]"
+        echo "  nanbeige-nothink     - Nanbeige4.2-3B (thinking OFF) resposta direta [Porta 8073]"
         echo "  gateway             - Roteador Central (FastAPI) [Porta 9000]"
         echo ""
         echo "EXEMPLOS PRÁTICOS:"
@@ -309,6 +322,8 @@ case $1 in
         echo "  ./manage.sh start dolphin3        # Dolphin3.0 Llama3.2-3B (1.9 GB) [Porta 8041]"
         echo "  ./manage.sh start lexi8b          # Lexi-Llama-3-8B-Uncensored (4.6 GB) [Porta 8051]"
         echo "  ./manage.sh start lfm25           # Liquid LFM 2.5 1.2B Q8_0 (1.2 GB) [Porta 8061]"
+        echo "  ./manage.sh start nanbeige        # Nanbeige4.2-3B Q4_K_M (2.4 GB) [Porta 8071]"
+        echo "  ./manage.sh start nanbeige-nothink # Nanbeige4.2-3B (thinking OFF) [Porta 8073]"
         echo "  ./manage.sh stop gemma2           # Para finalizar modelo"
         echo "  ./manage.sh stop-all              # Para finalizar todos os modelos"
         echo "  ./manage.sh status                # Para ver o que está ativo"

@@ -134,6 +134,15 @@ configure_openvino_for_model() {
             CLI="$CLI_CPU"
             echo "ℹ️  LFM 2.5 (Liquid 1.2B): GGML nativo CPU (Q8_0)"
             ;;
+        nanbeige|nanbeige-nothink)
+            # Nanbeige4.2-3B: modelo compacto de 3B params da OWAO
+            # 2.4 GB, Q4_K_M, excelente para código e raciocínio
+            # Variante -nothink desliga reasoning tags (<think>...</think>)
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            CLI="$CLI_CPU"
+            echo "ℹ️  Nanbeige4.2-3B: GGML nativo CPU (Q4_K_M)"
+            ;;
         *)
             # Gemma 2 e outros: OpenVINO INCOMPATIVEL
             unset GGML_OPENVINO_DEVICE
@@ -178,6 +187,8 @@ chat_cmd_for() {
         dolphin3)  echo "$cli -m $BASE/models/text/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         lexi8b)    echo "$cli -m $BASE/models/text/Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         lfm25)    echo "$cli -m $BASE/models/code/LFM2.5-1.2B-Instruct-Q8_0.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        nanbeige) echo "$cli -m $BASE/models/code/Nanbeige4.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        nanbeige-nothink) echo "$cli -m $BASE/models/code/Nanbeige4.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
         *)          echo "" ;;
     esac
 }
@@ -238,6 +249,8 @@ function show_help() {
     echo "  dolphin3             - Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s [1.9 GB]"
     echo "  lexi8b               - Lexi-Llama-3-8B-Uncensored Q4_K_M ~8-15 tok/s [4.6 GB]"
     echo "  lfm25                - Liquid LFM 2.5 1.2B Q8_0 ~25-40 tok/s [1.2 GB]"
+    echo "  nanbeige             - Nanbeige4.2-3B Q4_K_M ~18-30 tok/s [2.4 GB]"
+    echo "  nanbeige-nothink     - Nanbeige4.2-3B (thinking OFF) resposta direta [2.4 GB]"
     echo "                       - Formatos: JPG, PNG, WEBP (PDF/DOCX não suportados)"
     echo "                       - Caminho Windows: /mnt/c/Users/Nome/Pictures/foto.jpg (/mnt/c/Users/denil/...)"
     echo "                       - Caminho Linux:   /home/user/llm-stack/foto.jpg (/home/denilsonbj/...)"
