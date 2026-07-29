@@ -22,7 +22,7 @@ The project is organized to keep models, servers, and scripts isolated:
 ~/llm-stack
   ├── llama.cpp/               # Source code and compiled binaries
   ├── models/                  # .gguf files organized by category
-  │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B)
+  │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B), Dolphin3.0
   │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512
   │   ├── vision/              # Qwen2.5-VL (Model + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
@@ -152,6 +152,26 @@ mkdir -p ~/llm-stack/models/{text,code,vision}
 cd ~/llm-stack/models
 ```
 ### 3.1. Text / agents
+
+#### Dolphin3.0-Llama3.2-3B (Q4_K_M)
+
+O **Dolphin3.0** é um modelo da Cognitive Computations baseado no Llama 3.2-3B, conhecido por ser uncensored e versátil. Ótimo para tarefas gerais, chatbot e código simples.
+
+Repo: `dphn/Dolphin3.0-Llama3.2-3B` (safetensors original). GGUF convertido por `bartowski/Dolphin3.0-Llama3.2-3B-GGUF`. [huggingface](https://huggingface.co/bartowski/Dolphin3.0-Llama3.2-3B-GGUF)
+
+- **Arquivo:** `Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf` (1.9 GB)
+- **Qualidade:** Excelente para chat geral, código simples, tarefas do dia a dia
+- **RAM (4K ctx):** ~2.9 GB ✅ cabe em 8 GB WSL2
+- **Velocidade CPU (i5):** ~20-30 tok/s ⚡ Muito rápido
+- **Sem thinking mode** (Llama 3.2 base, sem tokens especiais de raciocínio)
+
+```bash
+cd ~/llm-stack/models/text
+
+wget -O Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf \
+  https://huggingface.co/bartowski/Dolphin3.0-Llama3.2-3B-GGUF/resolve/main/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf
+```
+
 #### Qwen2.5‑1.5B‑Instruct‑Q4_K_M.gguf
 
 Official GGUF repo: `Qwen/Qwen2.5-1.5B-Instruct-GGUF`. [huggingface](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)
@@ -383,6 +403,7 @@ In the terminal (WSL2), run:
 - `gemma4-e2b-vision-nothink`→ Port 8033 (Gemma 4 E2B + visão, thinking OFF)
 - `gemma4-e4b`        → Port 8022 (Gemma 4 E4B 4.5B ~10-15 tok/s, texto puro)
 - `gemma4-e4b-nothink`→ Port 8024 (Gemma 4 E4B, thinking OFF)
+- `dolphin3`          → Port 8041 (Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s)
 - `gemma4-e4b-vision` → Port 8032 (Gemma 4 E4B + visão)
 - `gemma4-e4b-vision-nothink`→ Port 8034 (Gemma 4 E4B + visão, thinking OFF)
 - `gateway`            → Port 9000 (The Central Router)
@@ -753,6 +774,7 @@ curl http://localhost:9000/v1/chat/completions \
 - **Gemma 4 E2B (visão)** → ~4.2 GB + ~1 GB overhead + KV cache (~5.2 GB total at 4K ctx)
 - **Gemma 4 E4B (texto)** → ~4.9 GB + ~1 GB overhead + KV cache (~5.9 GB total at 4K ctx)
 - **Gemma 4 E4B (visão)** → ~5.9 GB + ~1 GB overhead + KV cache (~6.9 GB total at 4K ctx)
+- **Dolphin3.0 Llama3.2-3B Q4_K_M** → ~1.9 GB + ~1 GB overhead + KV cache (~2.9 GB total at 4K ctx)
 
 Com 16 GB você pode rodar **1 modelo Bonsai 27B + 2 modelos pequenos** simultaneamente, mas **nunca os dois Bonsai ao mesmo tempo** (cada um precisa de ~5-8 GB). Os Gemma 4 E2B/E4B são leves o suficiente para rodar lado a lado com outros modelos. [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
 
@@ -776,7 +798,7 @@ On WSL2, the consolidated structure is:
 ~/llm-stack
   ├── llama.cpp/               # Compiled binaries (llama-server, llama-cli em build/ReleaseOV/bin/)
   ├── models/
-  │   ├── text/                # Text .gguf (Qwen, Gemma2, Gemma 4 E2B/E4B)
+  │   ├── text/                # Text .gguf (Qwen, Gemma2, Gemma 4 E2B/E4B, Dolphin3.0)
   │   ├── code/                # Code .gguf (Qwen Coder, Ministral, Ministral + mmproj)
   │   ├── vision/              # Vision .gguf (Qwen-VL + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B

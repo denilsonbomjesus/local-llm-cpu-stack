@@ -110,6 +110,14 @@ configure_openvino_for_model() {
             CLI="$CLI_CPU"
             echo "ℹ️  Gemma 4: GGML nativo CPU (qat-q4_0)"
             ;;
+        dolphin3)
+            # Dolphin3.0-Llama3.2-3B: base Llama 3.2, Q4_K_M
+            # 1.9 GB, excelente para tarefas gerais e código
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            CLI="$CLI_CPU"
+            echo "ℹ️  Dolphin3.0 (Llama3.2-3B): GGML nativo CPU (Q4_K_M)"
+            ;;
         *)
             # Gemma 2 e outros: OpenVINO INCOMPATIVEL
             unset GGML_OPENVINO_DEVICE
@@ -151,6 +159,7 @@ chat_cmd_for() {
         gemma4-e2b-vision-nothink) echo "$cli -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E2B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
         gemma4-e4b-vision)      echo "$cli -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         gemma4-e4b-vision-nothink) echo "$cli -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
+        dolphin3)  echo "$cli -m $BASE/models/text/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         *)          echo "" ;;
     esac
 }
@@ -208,6 +217,7 @@ function show_help() {
     echo "  gemma4-e4b-nothink       - Gemma 4 E4B (thinking OFF) resposta direta [4.9 GB]"
     echo "  gemma4-e4b-vision        - Gemma 4 E4B + visão (mmproj) [4.9 GB + 1 GB]"
     echo "  gemma4-e4b-vision-nothink - Gemma 4 E4B visão (thinking OFF) [4.9 GB + 1 GB]"
+    echo "  dolphin3             - Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s [1.9 GB]"
     echo "                       - Formatos: JPG, PNG, WEBP (PDF/DOCX não suportados)"
     echo "                       - Caminho Windows: /mnt/c/Users/Nome/Pictures/foto.jpg (/mnt/c/Users/denil/...)"
     echo "                       - Caminho Linux:   /home/user/llm-stack/foto.jpg (/home/denilsonbj/...)"

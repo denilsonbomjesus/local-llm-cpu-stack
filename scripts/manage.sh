@@ -93,6 +93,14 @@ configure_openvino_for_model() {
             LLAMA="$LLAMA_CPU"
             echo "ℹ️  Gemma 4: GGML nativo CPU (qat-q4_0)"
             ;;
+        dolphin3)
+            # Dolphin3.0-Llama3.2-3B: base Llama 3.2, Q4_K_M
+            # 1.9 GB, excelente para tarefas gerais e código
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            LLAMA="$LLAMA_CPU"
+            echo "ℹ️  Dolphin3.0 (Llama3.2-3B): GGML nativo CPU (Q4_K_M)"
+            ;;
         *)
             # Gemma 2 e outros: OpenVINO INCOMPATIVEL
             unset GGML_OPENVINO_DEVICE
@@ -134,6 +142,7 @@ server_cmd_for() {
         gemma4-e2b-vision-nothink) echo "$llama -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E2B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8033" ;;
         gemma4-e4b-vision)      echo "$llama -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --port 8032" ;;
         gemma4-e4b-vision-nothink) echo "$llama -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8034" ;;
+        dolphin3)  echo "$llama -m $BASE/models/text/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf -t $THREADS -c $CTX -b $BATCH --port 8041" ;;
         *)          echo "" ;;
     esac
 }
@@ -166,7 +175,7 @@ start_model() {
     local cmd
     cmd=$(server_cmd_for "$model")
     if [ -z "$cmd" ]; then
-        echo "Uso: ./manage.sh start {qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|gateway}"
+        echo "Uso: ./manage.sh start {qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|gateway}"
         return
     fi
 
@@ -208,7 +217,7 @@ function stop_model() {
 
 function status() {
     echo "--- Status dos Modelos (Sessões TMUX) ---"
-    tmux ls 2>/dev/null | grep -E "qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|gateway" || echo "Nenhum serviço rodando no momento."
+    tmux ls 2>/dev/null | grep -E "qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|gateway" || echo "Nenhum serviço rodando no momento."
 }
 
 # Lógica Principal do Script
@@ -221,7 +230,7 @@ case $1 in
         ;;
     stop-all)
         echo "Finalizando todos os serviços..."
-        for s in qwen-text gemma2 qwen-coder ministral-agent ministral-vision vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gemma4-e2b gemma4-e2b-nothink gemma4-e2b-vision gemma4-e2b-vision-nothink gemma4-e4b gemma4-e4b-nothink gemma4-e4b-vision gemma4-e4b-vision-nothink gateway; do
+        for s in qwen-text gemma2 qwen-coder ministral-agent ministral-vision vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gemma4-e2b gemma4-e2b-nothink gemma4-e2b-vision gemma4-e2b-vision-nothink gemma4-e4b gemma4-e4b-nothink gemma4-e4b-vision gemma4-e4b-vision-nothink dolphin3 gateway; do
             stop_model $s
         done
         ;;
@@ -259,6 +268,7 @@ case $1 in
         echo "  gemma4-e4b-nothink       - Gemma 4 E4B (thinking OFF) resposta direta [Porta 8024]"
         echo "  gemma4-e4b-vision        - Gemma 4 E4B + visão (mmproj) [Porta 8032]"
         echo "  gemma4-e4b-vision-nothink - Gemma 4 E4B visão (thinking OFF) [Porta 8034]"
+        echo "  dolphin3             - Dolphin3.0 Llama3.2-3B Q4_K_M [Porta 8041]"
         echo "  gateway             - Roteador Central (FastAPI) [Porta 9000]"
         echo ""
         echo "EXEMPLOS PRÁTICOS:"
@@ -276,6 +286,7 @@ case $1 in
         echo "  ./manage.sh start gemma4-e4b-nothink       # Gemma 4 E4B (thinking OFF)"
         echo "  ./manage.sh start gemma4-e4b-vision        # Gemma 4 E4B + visão (5.9 GB)"
         echo "  ./manage.sh start gemma4-e4b-vision-nothink # Gemma 4 E4B (thinking OFF) + visão"
+        echo "  ./manage.sh start dolphin3        # Dolphin3.0 Llama3.2-3B (1.9 GB) [Porta 8041]"
         echo "  ./manage.sh stop gemma2           # Para finalizar modelo"
         echo "  ./manage.sh stop-all              # Para finalizar todos os modelos"
         echo "  ./manage.sh status                # Para ver o que está ativo"

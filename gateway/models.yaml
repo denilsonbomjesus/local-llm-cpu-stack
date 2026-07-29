@@ -71,6 +71,10 @@ models:
     type: vision
     endpoint: http://localhost:8034
 
+  dolphin3.0-llama3.2-3b:
+    type: text
+    endpoint: http://localhost:8041
+
   # phi-3.5-vision-ov:
   #   type: vision
   #   endpoint: http://<IP_Windows>:8011

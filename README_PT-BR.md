@@ -22,7 +22,7 @@ O projeto está organizado para manter modelos, servidores e scripts isolados:
 ~/llm-stack
   ├── llama.cpp/               # Código-fonte e binários compilados
   ├── models/                  # Arquivos .gguf organizados por categoria
-  │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B)
+  │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B), Dolphin3.0
   │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512
   │   ├── vision/              # Qwen2.5-VL (Modelo + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
@@ -152,6 +152,26 @@ mkdir -p ~/llm-stack/models/{text,code,vision}
 cd ~/llm-stack/models
 ```
 ### 3.1. Texto / agentes
+
+#### Dolphin3.0-Llama3.2-3B (Q4_K_M)
+
+O **Dolphin3.0** é um modelo da Cognitive Computations baseado no Llama 3.2-3B, conhecido por ser uncensored e versátil. Ótimo para tarefas gerais, chatbot e código simples.
+
+Repo: `dphn/Dolphin3.0-Llama3.2-3B` (safetensors original). GGUF convertido por `bartowski/Dolphin3.0-Llama3.2-3B-GGUF`. [huggingface](https://huggingface.co/bartowski/Dolphin3.0-Llama3.2-3B-GGUF)
+
+- **Arquivo:** `Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf` (1.9 GB)
+- **Qualidade:** Excelente para chat geral, código simples, tarefas do dia a dia
+- **RAM (4K ctx):** ~2.9 GB ✅ cabe em 8 GB WSL2
+- **Velocidade CPU (i5):** ~20-30 tok/s ⚡ Muito rápido
+- **Sem thinking mode** (Llama 3.2 base, sem tokens especiais de raciocínio)
+
+```bash
+cd ~/llm-stack/models/text
+
+wget -O Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf \
+  https://huggingface.co/bartowski/Dolphin3.0-Llama3.2-3B-GGUF/resolve/main/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf
+```
+
 #### Qwen2.5‑1.5B‑Instruct‑Q4_K_M.gguf
 
 Repo oficial GGUF: `Qwen/Qwen2.5-1.5B-Instruct-GGUF`. [huggingface](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)
@@ -337,6 +357,7 @@ No terminal (WSL2), execute:
 - `gemma4-e2b-vision-nothink`→ Porta 8033 (Gemma 4 E2B + visão, thinking OFF)
 - `gemma4-e4b`        → Porta 8022 (Gemma 4 E4B 4.5B ~10-15 tok/s, texto puro)
 - `gemma4-e4b-nothink`→ Porta 8024 (Gemma 4 E4B, thinking OFF)
+- `dolphin3`          → Porta 8041 (Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s)
 - `gemma4-e4b-vision` → Porta 8032 (Gemma 4 E4B + visão)
 - `gemma4-e4b-vision-nothink`→ Porta 8034 (Gemma 4 E4B + visão, thinking OFF)
 - `gateway`            → Porta 9000 (O Roteador Central)
