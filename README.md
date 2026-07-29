@@ -22,7 +22,7 @@ The project is organized to keep models, servers, and scripts isolated:
 ~/llm-stack
   ├── llama.cpp/               # Source code and compiled binaries
   ├── models/                  # .gguf files organized by category
-  │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B Abliterated
+  │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B)
   │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512
   │   ├── vision/              # Qwen2.5-VL (Model + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
@@ -288,6 +288,64 @@ wget -O Ternary-Bonsai-27B-Q2_g64.gguf \
 
 > **Sobre o llama.cpp:** O Q1_0 e Q2_0_g64 já estão **mergeados no mainline** do llama.cpp. Basta dar `git pull` e recompilar o build CPU para suportá-los.
 
+### 3.5. Gemma 4 (E2B & E4B)
+
+Os modelos **Gemma 4** da Google representam um novo patamar de eficiência com a arquitetura PLE (Pyramid-Like Expansion). São modelos multimodal (texto + visão) com suporte nativo a GGUF.
+
+> **Pré-requisito:** llama.cpp versão b10173+ (mainline recente). Ambos usam `qat-q4_0`.
+
+#### Gemma 4 E2B (2.3B efetivos)
+
+Repo: `google/gemma-4-E2B-it-qat-q4_0-gguf`. [huggingface](https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf)
+
+- **Arquivo:** `gemma-4-E2B_q4_0-it.gguf` (3.2 GB)
+- **Qualidade:** Excelente para conversação, resumos e classificação
+- **RAM (4K ctx, texto puro):** ~4.2 GB ✅ cabe em 8 GB WSL2
+- **RAM (4K ctx, com mmproj):** ~5.2 GB ✅
+- **Velocidade CPU (i5):** ~22-35 tok/s ⚡ Muito rápido
+- **mmproj:** `gemma-4-E2B-it-mmproj.gguf` (942 MB, para visão)
+
+**Download (arquivos já em models/text/):**
+```bash
+cd ~/llm-stack/models/text
+
+# Modelo principal (obrigatório)
+wget -O gemma-4-E2B_q4_0-it.gguf \
+  https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf/resolve/main/gemma-4-E2B_q4_0-it.gguf
+
+# mmproj (opcional — só se for usar visão)
+wget -O gemma-4-E2B-it-mmproj.gguf \
+  https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf/resolve/main/gemma-4-E2B-it-mmproj.gguf
+```
+
+#### Gemma 4 E4B (4.5B efetivos)
+
+Repo: `google/gemma-4-E4B-it-qat-q4_0-gguf`. [huggingface](https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf)
+
+- **Arquivo:** `gemma-4-E4B_q4_0-it.gguf` (4.9 GB)
+- **Qualidade:** Superior em lógica, programação e raciocínio
+- **RAM (4K ctx, texto puro):** ~5.9 GB ⚠️ apertado em 8 GB WSL2
+- **RAM (4K ctx, com mmproj):** ~6.9 GB ⚠️ recomendado 10 GB WSL2
+- **Velocidade CPU (i5):** ~10-15 tok/s
+- **mmproj:** `gemma-4-E4B-it-mmproj.gguf` (946 MB, para visão)
+
+**Download:**
+```bash
+cd ~/llm-stack/models/text
+
+# Modelo principal
+wget -O gemma-4-E4B_q4_0-it.gguf \
+  https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf/resolve/main/gemma-4-E4B_q4_0-it.gguf
+
+# mmproj (opcional)
+wget -O gemma-4-E4B-it-mmproj.gguf \
+  https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf/resolve/main/gemma-4-E4B-it-mmproj.gguf
+```
+
+> **Dica de RAM:** Use as variantes **sem mmproj** (gemma4-e2b, gemma4-e4b) para economizar ~1 GB quando não for usar imagens. As variantes **-vision** (gemma4-e2b-vision, gemma4-e4b-vision) carregam o mmproj para suporte multimodal.
+
+> **Sobre thinking mode:** Gemma 4 tem pensamento interno via `<|think|>` tokens. Use as variantes `-nothink` para desligar e obter respostas mais diretas.
+
 ***
 ## 🧠 2b. What is Q4_K_M / IQ4_XS?
 - **Q4_K_M**: 4‑bit quantization in "super‑blocks" with per‑block statistics, 4.5 bits per weight, optimal quality vs RAM trade‑off – the normally recommended option for general use. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)
@@ -319,6 +377,14 @@ In the terminal (WSL2), run:
 - `vision`             → Port 8010 (Qwen-VL Python Server)
 - `bonsai-27b`         → Port 8011 (Bonsai 27B 1-bit ~4-8 tok/s)
 - `ternary-bonsai`     → Port 8012 (Ternary Bonsai 27B ~2-5 tok/s)
+- `gemma4-e2b`        → Port 8021 (Gemma 4 E2B 2.3B ~22-35 tok/s, texto puro)
+- `gemma4-e2b-nothink`→ Port 8023 (Gemma 4 E2B, thinking OFF)
+- `gemma4-e2b-vision` → Port 8031 (Gemma 4 E2B + visão)
+- `gemma4-e2b-vision-nothink`→ Port 8033 (Gemma 4 E2B + visão, thinking OFF)
+- `gemma4-e4b`        → Port 8022 (Gemma 4 E4B 4.5B ~10-15 tok/s, texto puro)
+- `gemma4-e4b-nothink`→ Port 8024 (Gemma 4 E4B, thinking OFF)
+- `gemma4-e4b-vision` → Port 8032 (Gemma 4 E4B + visão)
+- `gemma4-e4b-vision-nothink`→ Port 8034 (Gemma 4 E4B + visão, thinking OFF)
 - `gateway`            → Port 9000 (The Central Router)
 
 ### 4.2. Useful Manager commands
@@ -469,6 +535,38 @@ models:
   ternary-bonsai-27b:
     type: text
     endpoint: http://localhost:8012
+
+  gemma-4-e2b:
+    type: text
+    endpoint: http://localhost:8021
+
+  gemma-4-e2b-nothink:
+    type: text
+    endpoint: http://localhost:8023
+
+  gemma-4-e2b-vision:
+    type: vision
+    endpoint: http://localhost:8031
+
+  gemma-4-e2b-vision-nothink:
+    type: vision
+    endpoint: http://localhost:8033
+
+  gemma-4-e4b:
+    type: text
+    endpoint: http://localhost:8022
+
+  gemma-4-e4b-nothink:
+    type: text
+    endpoint: http://localhost:8024
+
+  gemma-4-e4b-vision:
+    type: vision
+    endpoint: http://localhost:8032
+
+  gemma-4-e4b-vision-nothink:
+    type: vision
+    endpoint: http://localhost:8034
 ```
 
 > This same YAML can be reused in n8n to have a centralized endpoint table.
@@ -651,8 +749,12 @@ curl http://localhost:9000/v1/chat/completions \
 - Qwen2.5‑Coder‑1.5B‑Q4_K_M → ~1.0 GB + cache. [huggingface](https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF)
 - **Bonsai 27B 1-bit** → ~3.9 GB + ~1.3 GB overhead + KV cache (~5.2 GB total at 4K ctx)
 - **Ternary Bonsai 27B** → ~7.2 GB + ~1.2 GB overhead + KV cache (~8.4 GB total at 4K ctx)
+- **Gemma 4 E2B (texto)** → ~3.2 GB + ~1 GB overhead + KV cache (~4.2 GB total at 4K ctx)
+- **Gemma 4 E2B (visão)** → ~4.2 GB + ~1 GB overhead + KV cache (~5.2 GB total at 4K ctx)
+- **Gemma 4 E4B (texto)** → ~4.9 GB + ~1 GB overhead + KV cache (~5.9 GB total at 4K ctx)
+- **Gemma 4 E4B (visão)** → ~5.9 GB + ~1 GB overhead + KV cache (~6.9 GB total at 4K ctx)
 
-Com 16 GB você pode rodar **1 modelo Bonsai 27B + 2 modelos pequenos** simultaneamente, mas **nunca os dois Bonsai ao mesmo tempo** (cada um precisa de ~5-8 GB). [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
+Com 16 GB você pode rodar **1 modelo Bonsai 27B + 2 modelos pequenos** simultaneamente, mas **nunca os dois Bonsai ao mesmo tempo** (cada um precisa de ~5-8 GB). Os Gemma 4 E2B/E4B são leves o suficiente para rodar lado a lado com outros modelos. [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
 
 To measure real performance:
 
@@ -674,7 +776,7 @@ On WSL2, the consolidated structure is:
 ~/llm-stack
   ├── llama.cpp/               # Compiled binaries (llama-server, llama-cli em build/ReleaseOV/bin/)
   ├── models/
-  │   ├── text/                # Text .gguf (Qwen, Gemma2)
+  │   ├── text/                # Text .gguf (Qwen, Gemma2, Gemma 4 E2B/E4B)
   │   ├── code/                # Code .gguf (Qwen Coder, Ministral, Ministral + mmproj)
   │   ├── vision/              # Vision .gguf (Qwen-VL + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B

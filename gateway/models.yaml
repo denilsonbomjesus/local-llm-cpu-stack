@@ -39,6 +39,38 @@ models:
     type: text
     endpoint: http://localhost:8014
 
+  gemma-4-e2b:
+    type: text
+    endpoint: http://localhost:8021
+
+  gemma-4-e4b:
+    type: text
+    endpoint: http://localhost:8022
+
+  gemma-4-e2b-nothink:
+    type: text
+    endpoint: http://localhost:8023
+
+  gemma-4-e4b-nothink:
+    type: text
+    endpoint: http://localhost:8024
+
+  gemma-4-e2b-vision:
+    type: vision
+    endpoint: http://localhost:8031
+
+  gemma-4-e2b-vision-nothink:
+    type: vision
+    endpoint: http://localhost:8033
+
+  gemma-4-e4b-vision:
+    type: vision
+    endpoint: http://localhost:8032
+
+  gemma-4-e4b-vision-nothink:
+    type: vision
+    endpoint: http://localhost:8034
+
   # phi-3.5-vision-ov:
   #   type: vision
   #   endpoint: http://<IP_Windows>:8011

@@ -22,9 +22,10 @@ O projeto está organizado para manter modelos, servidores e scripts isolados:
 ~/llm-stack
   ├── llama.cpp/               # Código-fonte e binários compilados
   ├── models/                  # Arquivos .gguf organizados por categoria
-  │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B Abliterated
+  │   ├── text/                # Qwen2.5-1.5B, Gemma 2 2B, Gemma 4 (E2B/E4B)
   │   ├── code/                # Qwen2.5-Coder, Ministral-3-3B-Instruct-2512
-  │   └── vision/              # Qwen2.5-VL (Modelo + mmproj)
+  │   ├── vision/              # Qwen2.5-VL (Modelo + mmproj)
+  │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # Servidor Python para o Qwen-VL
   ├── gateway/                 # Roteador FastAPI (Porta 9000)
   ├── scripts/                 # Scripts de controle (manage.sh, chat.sh)
@@ -241,6 +242,62 @@ wget -O ~/llm-stack/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8
 
 > Obs.: não vi Q4_K_M explicitamente na tree, mas IQ4_XS é uma variante 4‑bit compacta, adequada para CPU. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)
 
+### 3.5. Gemma 4 (E2B & E4B)
+
+Os modelos **Gemma 4** da Google representam um novo patamar de eficiência com a arquitetura PLE (Pyramid-Like Expansion). São modelos multimodais (texto + visão) com suporte nativo a GGUF.
+
+> **Pré-requisito:** llama.cpp versão b10173+ (mainline recente). Ambos usam `qat-q4_0`.
+
+#### Gemma 4 E2B (2.3B efetivos)
+
+Repo: `google/gemma-4-E2B-it-qat-q4_0-gguf`. [huggingface](https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf)
+
+- **Arquivo:** `gemma-4-E2B_q4_0-it.gguf` (3.2 GB)
+- **Qualidade:** Excelente para conversação, resumos e classificação
+- **RAM (4K ctx, texto puro):** ~4.2 GB ✅ cabe em 8 GB WSL2
+- **RAM (4K ctx, com mmproj):** ~5.2 GB ✅
+- **Velocidade CPU (i5):** ~22-35 tok/s ⚡ Muito rápido
+- **mmproj:** `gemma-4-E2B-it-mmproj.gguf` (942 MB, para visão)
+
+```bash
+cd ~/llm-stack/models/text
+
+# Modelo principal
+wget -O gemma-4-E2B_q4_0-it.gguf \
+  https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf/resolve/main/gemma-4-E2B_q4_0-it.gguf
+
+# mmproj (opcional — só se for usar visão)
+wget -O gemma-4-E2B-it-mmproj.gguf \
+  https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf/resolve/main/gemma-4-E2B-it-mmproj.gguf
+```
+
+#### Gemma 4 E4B (4.5B efetivos)
+
+Repo: `google/gemma-4-E4B-it-qat-q4_0-gguf`. [huggingface](https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf)
+
+- **Arquivo:** `gemma-4-E4B_q4_0-it.gguf` (4.9 GB)
+- **Qualidade:** Superior em lógica, programação e raciocínio
+- **RAM (4K ctx, texto puro):** ~5.9 GB ⚠️ apertado em 8 GB WSL2
+- **RAM (4K ctx, com mmproj):** ~6.9 GB ⚠️ recomendado 10 GB WSL2
+- **Velocidade CPU (i5):** ~10-15 tok/s
+- **mmproj:** `gemma-4-E4B-it-mmproj.gguf` (946 MB, para visão)
+
+```bash
+cd ~/llm-stack/models/text
+
+# Modelo principal
+wget -O gemma-4-E4B_q4_0-it.gguf \
+  https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf/resolve/main/gemma-4-E4B_q4_0-it.gguf
+
+# mmproj (opcional)
+wget -O gemma-4-E4B-it-mmproj.gguf \
+  https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf/resolve/main/gemma-4-E4B-it-mmproj.gguf
+```
+
+> **Dica de RAM:** Use as variantes **sem mmproj** (gemma4-e2b, gemma4-e4b) para economizar ~1 GB quando não for usar imagens. As variantes **-vision** (gemma4-e2b-vision, gemma4-e4b-vision) carregam o mmproj para suporte multimodal.
+
+> **Sobre thinking mode:** Gemma 4 tem pensamento interno via `<|think|>` tokens. Use as variantes `-nothink` para desligar e obter respostas mais diretas.
+
 ***
 ## 🧠 2b. O que é Q4_K_M / IQ4_XS?
 - **Q4_K_M**: quantização 4‑bit em “super‑blocos” com estatísticas por bloco, 4.5 bits por peso, trade‑off ótimo de qualidade vs RAM – a opção normalmente recomendada para uso geral. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)
@@ -264,12 +321,24 @@ No terminal (WSL2), execute:
 ```
 
 **Opções disponíveis:**
-- `qwen-text`          → Porta 8001 (Qwen 2.5 1.5B)
+-  `qwen-text`          → Porta 8001 (Qwen 2.5 1.5B)
 - `gemma2`             → Porta 8002 (Gemma 2 2B)
 - `qwen-coder`         → Porta 8003 (Qwen Coder 1.5B)
 - `ministral-agent`    → Porta 8004 (Ministral 3 3B)
 - `ministral-vision`   → Porta 8005 (Ministral 3 3B)
 - `vision`             → Porta 8010 (Qwen-VL Python Server)
+- `bonsai-27b`         → Porta 8011 (Bonsai 27B 1-bit ~4-8 tok/s)
+- `bonsai-27b-nothink` → Porta 8013 (Bonsai 27B, thinking OFF)
+- `ternary-bonsai`     → Porta 8012 (Ternary Bonsai 27B ~2-5 tok/s)
+- `ternary-bonsai-nothink` → Porta 8014 (Ternary Bonsai, thinking OFF)
+- `gemma4-e2b`        → Porta 8021 (Gemma 4 E2B 2.3B ~22-35 tok/s, texto puro)
+- `gemma4-e2b-nothink`→ Porta 8023 (Gemma 4 E2B, thinking OFF)
+- `gemma4-e2b-vision` → Porta 8031 (Gemma 4 E2B + visão)
+- `gemma4-e2b-vision-nothink`→ Porta 8033 (Gemma 4 E2B + visão, thinking OFF)
+- `gemma4-e4b`        → Porta 8022 (Gemma 4 E4B 4.5B ~10-15 tok/s, texto puro)
+- `gemma4-e4b-nothink`→ Porta 8024 (Gemma 4 E4B, thinking OFF)
+- `gemma4-e4b-vision` → Porta 8032 (Gemma 4 E4B + visão)
+- `gemma4-e4b-vision-nothink`→ Porta 8034 (Gemma 4 E4B + visão, thinking OFF)
 - `gateway`            → Porta 9000 (O Roteador Central)
 
 ### 4.2. Comandos úteis do Manager
@@ -412,6 +481,54 @@ models:
   qwen2.5-vl-3b-abliterated:
     type: vision
     endpoint: http://localhost:8010
+
+  bonsai-27b-1bit:
+    type: text
+    endpoint: http://localhost:8011
+
+  bonsai-27b-1bit-nothink:
+    type: text
+    endpoint: http://localhost:8013
+
+  ternary-bonsai-27b:
+    type: text
+    endpoint: http://localhost:8012
+
+  ternary-bonsai-27b-nothink:
+    type: text
+    endpoint: http://localhost:8014
+
+  gemma-4-e2b:
+    type: text
+    endpoint: http://localhost:8021
+
+  gemma-4-e2b-nothink:
+    type: text
+    endpoint: http://localhost:8023
+
+  gemma-4-e2b-vision:
+    type: vision
+    endpoint: http://localhost:8031
+
+  gemma-4-e2b-vision-nothink:
+    type: vision
+    endpoint: http://localhost:8033
+
+  gemma-4-e4b:
+    type: text
+    endpoint: http://localhost:8022
+
+  gemma-4-e4b-nothink:
+    type: text
+    endpoint: http://localhost:8024
+
+  gemma-4-e4b-vision:
+    type: vision
+    endpoint: http://localhost:8032
+
+  gemma-4-e4b-vision-nothink:
+    type: vision
+    endpoint: http://localhost:8034
 ```
 
 > Esse mesmo YAML você pode reutilizar no n8n para ter uma tabela de endpoints centralizada.
@@ -592,6 +709,12 @@ curl http://localhost:9000/v1/chat/completions \
 
 - Qwen2.5‑1.5B‑Instruct‑Q4_K_M → ~1.1 GB + KV‑cache (até ~2–3 GB com contexto grande). [huggingface](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)
 - Qwen2.5‑Coder‑1.5B‑Q4_K_M → ~1.0 GB + cache. [huggingface](https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF)
+- **Bonsai 27B 1-bit** → ~3.9 GB + ~1.3 GB overhead + KV cache (~5.2 GB total em 4K ctx)
+- **Ternary Bonsai 27B** → ~7.2 GB + ~1.2 GB overhead + KV cache (~8.4 GB total em 4K ctx)
+- **Gemma 4 E2B (texto)** → ~3.2 GB + ~1 GB overhead + KV cache (~4.2 GB total em 4K ctx)
+- **Gemma 4 E2B (visão)** → ~4.2 GB + ~1 GB overhead + KV cache (~5.2 GB total em 4K ctx)
+- **Gemma 4 E4B (texto)** → ~4.9 GB + ~1 GB overhead + KV cache (~5.9 GB total em 4K ctx)
+- **Gemma 4 E4B (visão)** → ~4.9 GB + ~1 GB overhead + KV cache (~6.9 GB total em 4K ctx)
 
 Com 16 GB dá para rodar **3–4 modelos 1.5–3B** em Q4 simultâneos + sistema + n8n, desde que não exagere em contextos gigantes em todos ao mesmo tempo. [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
 
@@ -616,9 +739,10 @@ No WSL2, a estrutura consolidada é:
 ~/llm-stack
   ├── llama.cpp/               # Binários compilados (llama-server, llama-cli em build/ReleaseOV/bin/)os compilados (llama-server, llama-cli)
   ├── models/
-  │   ├── text/                # .gguf de texto (Qwen, Gemma2)
+  │   ├── text/                # .gguf de texto (Qwen, Gemma2, Gemma 4 E2B/E4B)
   │   ├── code/                # .gguf de código (Qwen Coder, Ministral, Ministral + mmproj)
-  │   └── vision/              # .gguf de visão (Qwen-VL + mmproj)
+  │   ├── vision/              # .gguf de visão (Qwen-VL + mmproj)
+  │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── vision/                  # venv + qwen_vl_server.py
   ├── gateway/                 # venv + gateway_server.py + models.yaml
   ├── scripts/                 

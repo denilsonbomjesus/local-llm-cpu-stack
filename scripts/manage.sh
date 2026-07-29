@@ -85,6 +85,14 @@ configure_openvino_for_model() {
             LLAMA="$LLAMA_CPU"
             echo "ℹ️  Ternary Bonsai 27B: GGML nativo CPU (Q2_0_g64)"
             ;;
+        gemma4-e2b|gemma4-e4b|gemma4-e2b-nothink|gemma4-e4b-nothink|gemma4-e2b-vision|gemma4-e4b-vision|gemma4-e2b-vision-nothink|gemma4-e4b-vision-nothink)
+            # Gemma 4 (E2B/E4B): qat-q4_0 — suportado nativamente
+            # Variantes -vision incluem mmproj para suporte multimodal
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            LLAMA="$LLAMA_CPU"
+            echo "ℹ️  Gemma 4: GGML nativo CPU (qat-q4_0)"
+            ;;
         *)
             # Gemma 2 e outros: OpenVINO INCOMPATIVEL
             unset GGML_OPENVINO_DEVICE
@@ -118,6 +126,14 @@ server_cmd_for() {
         bonsai-27b-nothink)    echo "$llama -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8013" ;;
         ternary-bonsai)        echo "$llama -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH --port 8012" ;;
         ternary-bonsai-nothink) echo "$llama -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8014" ;;
+        gemma4-e2b)            echo "$llama -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf -t $THREADS -c $CTX -b $BATCH --port 8021" ;;
+        gemma4-e2b-nothink)     echo "$llama -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8023" ;;
+        gemma4-e4b)            echo "$llama -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf -t $THREADS -c $CTX -b $BATCH --port 8022" ;;
+        gemma4-e4b-nothink)     echo "$llama -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8024" ;;
+        gemma4-e2b-vision)      echo "$llama -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E2B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --port 8031" ;;
+        gemma4-e2b-vision-nothink) echo "$llama -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E2B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8033" ;;
+        gemma4-e4b-vision)      echo "$llama -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --port 8032" ;;
+        gemma4-e4b-vision-nothink) echo "$llama -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8034" ;;
         *)          echo "" ;;
     esac
 }
@@ -150,7 +166,7 @@ start_model() {
     local cmd
     cmd=$(server_cmd_for "$model")
     if [ -z "$cmd" ]; then
-        echo "Uso: ./manage.sh start {qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|ternary-bonsai|gateway}"
+        echo "Uso: ./manage.sh start {qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|gateway}"
         return
     fi
 
@@ -192,7 +208,7 @@ function stop_model() {
 
 function status() {
     echo "--- Status dos Modelos (Sessões TMUX) ---"
-    tmux ls 2>/dev/null | grep -E "qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gateway" || echo "Nenhum serviço rodando no momento."
+    tmux ls 2>/dev/null | grep -E "qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|gateway" || echo "Nenhum serviço rodando no momento."
 }
 
 # Lógica Principal do Script
@@ -205,7 +221,7 @@ case $1 in
         ;;
     stop-all)
         echo "Finalizando todos os serviços..."
-        for s in qwen-text gemma2 qwen-coder ministral-agent ministral-vision vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gateway; do
+        for s in qwen-text gemma2 qwen-coder ministral-agent ministral-vision vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gemma4-e2b gemma4-e2b-nothink gemma4-e2b-vision gemma4-e2b-vision-nothink gemma4-e4b gemma4-e4b-nothink gemma4-e4b-vision gemma4-e4b-vision-nothink gateway; do
             stop_model $s
         done
         ;;
@@ -235,6 +251,14 @@ case $1 in
         echo "  bonsai-27b-nothink    - 27B 1-bit (thinking OFF) resposta direta [Porta 8013]"
         echo "  ternary-bonsai        - 27B ternário (94.6% FP16) ~2-5 tok/s [Porta 8012]"
         echo "  ternary-bonsai-nothink - 27B ternário (thinking OFF) resposta direta [Porta 8014]"
+        echo "  gemma4-e2b              - Gemma 4 E2B 2.3B ~22-35 tok/s [Porta 8021]"
+        echo "  gemma4-e2b-nothink       - Gemma 4 E2B (thinking OFF) resposta direta [Porta 8023]"
+        echo "  gemma4-e2b-vision        - Gemma 4 E2B + visão (mmproj) [Porta 8031]"
+        echo "  gemma4-e2b-vision-nothink - Gemma 4 E2B visão (thinking OFF) [Porta 8033]"
+        echo "  gemma4-e4b              - Gemma 4 E4B 4.5B ~10-15 tok/s [Porta 8022]"
+        echo "  gemma4-e4b-nothink       - Gemma 4 E4B (thinking OFF) resposta direta [Porta 8024]"
+        echo "  gemma4-e4b-vision        - Gemma 4 E4B + visão (mmproj) [Porta 8032]"
+        echo "  gemma4-e4b-vision-nothink - Gemma 4 E4B visão (thinking OFF) [Porta 8034]"
         echo "  gateway             - Roteador Central (FastAPI) [Porta 9000]"
         echo ""
         echo "EXEMPLOS PRÁTICOS:"
@@ -244,6 +268,14 @@ case $1 in
         echo "  ./manage.sh start bonsai-27b-nothink    # 27B 1-bit (thinking OFF)"
         echo "  ./manage.sh start ternary-bonsai        # 27B ternário (7.2 GB)"
         echo "  ./manage.sh start ternary-bonsai-nothink # 27B ternário (thinking OFF)"
+        echo "  ./manage.sh start gemma4-e2b              # Gemma 4 E2B 2.3B (3.2 GB)"
+        echo "  ./manage.sh start gemma4-e2b-nothink       # Gemma 4 E2B (thinking OFF)"
+        echo "  ./manage.sh start gemma4-e2b-vision        # Gemma 4 E2B + visão (4.2 GB)"
+        echo "  ./manage.sh start gemma4-e2b-vision-nothink # Gemma 4 E2B (thinking OFF) + visão"
+        echo "  ./manage.sh start gemma4-e4b              # Gemma 4 E4B 4.5B (4.9 GB)"
+        echo "  ./manage.sh start gemma4-e4b-nothink       # Gemma 4 E4B (thinking OFF)"
+        echo "  ./manage.sh start gemma4-e4b-vision        # Gemma 4 E4B + visão (5.9 GB)"
+        echo "  ./manage.sh start gemma4-e4b-vision-nothink # Gemma 4 E4B (thinking OFF) + visão"
         echo "  ./manage.sh stop gemma2           # Para finalizar modelo"
         echo "  ./manage.sh stop-all              # Para finalizar todos os modelos"
         echo "  ./manage.sh status                # Para ver o que está ativo"

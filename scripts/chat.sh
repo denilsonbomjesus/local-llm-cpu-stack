@@ -100,6 +100,16 @@ configure_openvino_for_model() {
             CLI="$CLI_CPU"
             echo "ℹ️  Ternary Bonsai 27B: GGML nativo CPU (Q2_0_g64)"
             ;;
+        gemma4-e2b|gemma4-e4b|gemma4-e2b-nothink|gemma4-e4b-nothink|gemma4-e2b-vision|gemma4-e4b-vision|gemma4-e2b-vision-nothink|gemma4-e4b-vision-nothink)
+            # Gemma 4 (E2B/E4B): qat-q4_0 — suportado nativamente
+            # E2B: 2.3B efetivos, 3.2 GB, 22-35 tok/s
+            # E4B: 4.5B efetivos, 4.9 GB, 10-15 tok/s
+            # Variantes -vision incluem mmproj para suporte multimodal
+            unset GGML_OPENVINO_DEVICE
+            unset GGML_OPENVINO_STATEFUL_EXECUTION
+            CLI="$CLI_CPU"
+            echo "ℹ️  Gemma 4: GGML nativo CPU (qat-q4_0)"
+            ;;
         *)
             # Gemma 2 e outros: OpenVINO INCOMPATIVEL
             unset GGML_OPENVINO_DEVICE
@@ -133,6 +143,14 @@ chat_cmd_for() {
         bonsai-27b-nothink)    echo "$cli -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
         ternary-bonsai)        echo "$cli -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         ternary-bonsai-nothink) echo "$cli -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
+        gemma4-e2b)            echo "$cli -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        gemma4-e2b-nothink)     echo "$cli -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
+        gemma4-e4b)            echo "$cli -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        gemma4-e4b-nothink)     echo "$cli -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
+        gemma4-e2b-vision)      echo "$cli -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E2B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        gemma4-e2b-vision-nothink) echo "$cli -m $BASE/models/text/gemma-4-E2B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E2B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
+        gemma4-e4b-vision)      echo "$cli -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        gemma4-e4b-vision-nothink) echo "$cli -m $BASE/models/text/gemma-4-E4B_q4_0-it.gguf --mmproj $BASE/models/text/gemma-4-E4B-it-mmproj.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
         *)          echo "" ;;
     esac
 }
@@ -182,6 +200,14 @@ function show_help() {
     echo "  bonsai-27b-nothink    - 27B 1-bit (thinking OFF) resposta direta [3.8 GB]"
     echo "  ternary-bonsai        - 27B ternário (94.6% FP16) ~2-5 tok/s [7.2 GB]"
     echo "  ternary-bonsai-nothink - 27B ternário (thinking OFF) resposta direta [7.2 GB]"
+    echo "  gemma4-e2b              - Gemma 4 E2B 2.3B (qat-q4_0) ~22-35 tok/s [3.2 GB]"
+    echo "  gemma4-e2b-nothink       - Gemma 4 E2B (thinking OFF) resposta direta [3.2 GB]"
+    echo "  gemma4-e2b-vision        - Gemma 4 E2B + visão (mmproj) [3.2 GB + 1 GB]"
+    echo "  gemma4-e2b-vision-nothink - Gemma 4 E2B visão (thinking OFF) [3.2 GB + 1 GB]"
+    echo "  gemma4-e4b              - Gemma 4 E4B 4.5B (qat-q4_0) ~10-15 tok/s [4.9 GB]"
+    echo "  gemma4-e4b-nothink       - Gemma 4 E4B (thinking OFF) resposta direta [4.9 GB]"
+    echo "  gemma4-e4b-vision        - Gemma 4 E4B + visão (mmproj) [4.9 GB + 1 GB]"
+    echo "  gemma4-e4b-vision-nothink - Gemma 4 E4B visão (thinking OFF) [4.9 GB + 1 GB]"
     echo "                       - Formatos: JPG, PNG, WEBP (PDF/DOCX não suportados)"
     echo "                       - Caminho Windows: /mnt/c/Users/Nome/Pictures/foto.jpg (/mnt/c/Users/denil/...)"
     echo "                       - Caminho Linux:   /home/user/llm-stack/foto.jpg (/home/denilsonbj/...)"

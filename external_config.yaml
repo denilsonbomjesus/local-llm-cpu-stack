@@ -19,6 +19,22 @@ models:
     endpoint: http://localhost:9000/v1/chat/completions
   ternary-bonsai-27b-nothink:
     endpoint: http://localhost:9000/v1/chat/completions
+  gemma-4-e2b:
+    endpoint: http://localhost:9000/v1/chat/completions
+  gemma-4-e4b:
+    endpoint: http://localhost:9000/v1/chat/completions
+  gemma-4-e2b-nothink:
+    endpoint: http://localhost:9000/v1/chat/completions
+  gemma-4-e4b-nothink:
+    endpoint: http://localhost:9000/v1/chat/completions
+  gemma-4-e2b-vision:
+    endpoint: http://localhost:9000/v1/chat/completions
+  gemma-4-e2b-vision-nothink:
+    endpoint: http://localhost:9000/v1/chat/completions
+  gemma-4-e4b-vision:
+    endpoint: http://localhost:9000/v1/chat/completions
+  gemma-4-e4b-vision-nothink:
+    endpoint: http://localhost:9000/v1/chat/completions
 
   # Modelos de Visão (como o seu servidor Python ou o Windows)
   qwen2.5-vl-3b-abliterated:
