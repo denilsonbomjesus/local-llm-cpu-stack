@@ -13,7 +13,11 @@ models:
     endpoint: http://localhost:9000/v1/chat/completions
   bonsai-27b-1bit:
     endpoint: http://localhost:9000/v1/chat/completions
+  bonsai-27b-1bit-nothink:
+    endpoint: http://localhost:9000/v1/chat/completions
   ternary-bonsai-27b:
+    endpoint: http://localhost:9000/v1/chat/completions
+  ternary-bonsai-27b-nothink:
     endpoint: http://localhost:9000/v1/chat/completions
 
   # Modelos de Visão (como o seu servidor Python ou o Windows)

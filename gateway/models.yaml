@@ -27,9 +27,17 @@ models:
     type: text
     endpoint: http://localhost:8011
 
+  bonsai-27b-1bit-nothink:
+    type: text
+    endpoint: http://localhost:8013
+
   ternary-bonsai-27b:
     type: text
     endpoint: http://localhost:8012
+
+  ternary-bonsai-27b-nothink:
+    type: text
+    endpoint: http://localhost:8014
 
   # phi-3.5-vision-ov:
   #   type: vision

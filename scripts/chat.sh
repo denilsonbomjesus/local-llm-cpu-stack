@@ -84,7 +84,7 @@ configure_openvino_for_model() {
             CLI="$CLI_CPU"
             echo "ℹ️  Ministral: OpenVINO incompativel. Usando GGML nativo (CPU)."
             ;;
-        bonsai-27b)
+        bonsai-27b|bonsai-27b-nothink)
             # Bonsai 27B 1-bit: Q1_0_g128 — suportado nativamente no mainline llama.cpp
             # 3.8 GB, 89.5% do FP16, 262K contexto
             unset GGML_OPENVINO_DEVICE
@@ -92,7 +92,7 @@ configure_openvino_for_model() {
             CLI="$CLI_CPU"
             echo "ℹ️  Bonsai 27B 1-bit: GGML nativo CPU (Q1_0)"
             ;;
-        ternary-bonsai)
+        ternary-bonsai|ternary-bonsai-nothink)
             # Ternary Bonsai 27B: Q2_0_g64 — suportado nativamente no mainline llama.cpp
             # 7.2 GB, 94.6% do FP16 — requer 10 GB WSL2
             unset GGML_OPENVINO_DEVICE
@@ -129,8 +129,10 @@ chat_cmd_for() {
         ministral-agent) echo "$cli -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         ministral-vision) echo "$cli -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf --mmproj $BASE/models/code/ministral-3-3b-instruct-2512-mmproj-f16.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         vision)     echo "$cli -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf -t $THREADS -c $CTX" ;;
-        bonsai-27b) echo "$cli -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH" ;;
-        ternary-bonsai) echo "$cli -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        bonsai-27b)           echo "$cli -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        bonsai-27b-nothink)    echo "$cli -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
+        ternary-bonsai)        echo "$cli -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH" ;;
+        ternary-bonsai-nothink) echo "$cli -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
         *)          echo "" ;;
     esac
 }
@@ -176,8 +178,10 @@ function show_help() {
     echo "  ministral-agent    - Chat inteligente/código (Ministral)"
     echo "  ministral-vision   - Chat inteligente/Visão (Ministral)"
     echo "  vision             - Chat de visão (Análise de imagens via Terminal)"
-    echo "  bonsai-27b         - 27B 1-bit (89.5% FP16) ~4-8 tok/s [3.8 GB]"
-    echo "  ternary-bonsai     - 27B ternário (94.6% FP16) ~2-5 tok/s [7.2 GB]"
+    echo "  bonsai-27b           - 27B 1-bit (89.5% FP16) ~4-8 tok/s [3.8 GB]"
+    echo "  bonsai-27b-nothink    - 27B 1-bit (thinking OFF) resposta direta [3.8 GB]"
+    echo "  ternary-bonsai        - 27B ternário (94.6% FP16) ~2-5 tok/s [7.2 GB]"
+    echo "  ternary-bonsai-nothink - 27B ternário (thinking OFF) resposta direta [7.2 GB]"
     echo "                       - Formatos: JPG, PNG, WEBP (PDF/DOCX não suportados)"
     echo "                       - Caminho Windows: /mnt/c/Users/Nome/Pictures/foto.jpg (/mnt/c/Users/denil/...)"
     echo "                       - Caminho Linux:   /home/user/llm-stack/foto.jpg (/home/denilsonbj/...)"

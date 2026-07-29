@@ -71,14 +71,14 @@ configure_openvino_for_model() {
             LLAMA="$LLAMA_CPU"
             echo "ℹ️  Ministral: OpenVINO incompativel. Usando GGML nativo (CPU)."
             ;;
-        bonsai-27b)
+        bonsai-27b|bonsai-27b-nothink)
             # Bonsai 27B 1-bit: Q1_0_g128 — mainline llama.cpp
             unset GGML_OPENVINO_DEVICE
             unset GGML_OPENVINO_STATEFUL_EXECUTION
             LLAMA="$LLAMA_CPU"
             echo "ℹ️  Bonsai 27B 1-bit: GGML nativo CPU (Q1_0)"
             ;;
-        ternary-bonsai)
+        ternary-bonsai|ternary-bonsai-nothink)
             # Ternary Bonsai 27B: Q2_0_g64 — mainline llama.cpp
             unset GGML_OPENVINO_DEVICE
             unset GGML_OPENVINO_STATEFUL_EXECUTION
@@ -114,8 +114,10 @@ server_cmd_for() {
         ministral-agent) echo "$llama -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8004" ;;
         ministral-vision) echo "$llama -m $BASE/models/code/ministral-3-3b-instruct-2512-q4_k_m.gguf --mmproj $BASE/models/code/ministral-3-3b-instruct-2512-mmproj-f16.gguf -t $THREADS -c $CTX -b $BATCH --port 8005" ;;
         vision)     echo "$llama -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf -t $THREADS -c $CTX --port 8010" ;;
-        bonsai-27b) echo "$llama -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --port 8011" ;;
-        ternary-bonsai) echo "$llama -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH --port 8012" ;;
+        bonsai-27b)           echo "$llama -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --port 8011" ;;
+        bonsai-27b-nothink)    echo "$llama -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8013" ;;
+        ternary-bonsai)        echo "$llama -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH --port 8012" ;;
+        ternary-bonsai-nothink) echo "$llama -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8014" ;;
         *)          echo "" ;;
     esac
 }
@@ -190,7 +192,7 @@ function stop_model() {
 
 function status() {
     echo "--- Status dos Modelos (Sessões TMUX) ---"
-    tmux ls 2>/dev/null | grep -E "qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|ternary-bonsai|gateway" || echo "Nenhum serviço rodando no momento."
+    tmux ls 2>/dev/null | grep -E "qwen-text|gemma2|qwen-coder|ministral-agent|ministral-vision|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gateway" || echo "Nenhum serviço rodando no momento."
 }
 
 # Lógica Principal do Script
@@ -203,7 +205,7 @@ case $1 in
         ;;
     stop-all)
         echo "Finalizando todos os serviços..."
-        for s in qwen-text gemma2 qwen-coder ministral-agent ministral-vision vision bonsai-27b ternary-bonsai gateway; do
+        for s in qwen-text gemma2 qwen-coder ministral-agent ministral-vision vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gateway; do
             stop_model $s
         done
         ;;
@@ -229,15 +231,19 @@ case $1 in
         echo "  ministral-agent     - Agente e Código (Ministral 3 3B) [Porta 8004]"
         echo "  ministral-vision    - Texto + Visão (Ministral 3 3B) [Porta 8005]"
         echo "  vision              - Servidor de Visão (Qwen-VL) [Porta 8010]"
-        echo "  bonsai-27b          - 27B 1-bit (89.5% FP16) ~4-8 tok/s [Porta 8011]"
-        echo "  ternary-bonsai      - 27B ternário (94.6% FP16) ~2-5 tok/s [Porta 8012]"
+        echo "  bonsai-27b           - 27B 1-bit (89.5% FP16) ~4-8 tok/s [Porta 8011]"
+        echo "  bonsai-27b-nothink    - 27B 1-bit (thinking OFF) resposta direta [Porta 8013]"
+        echo "  ternary-bonsai        - 27B ternário (94.6% FP16) ~2-5 tok/s [Porta 8012]"
+        echo "  ternary-bonsai-nothink - 27B ternário (thinking OFF) resposta direta [Porta 8014]"
         echo "  gateway             - Roteador Central (FastAPI) [Porta 9000]"
         echo ""
         echo "EXEMPLOS PRÁTICOS:"
         echo "  ./manage.sh start qwen-coder      # Para começar a programar"
         echo "  ./manage.sh start vision          # Para analisar imagens"
-        echo "  ./manage.sh start bonsai-27b      # 27B 1-bit (3.8 GB)"
-        echo "  ./manage.sh start ternary-bonsai  # 27B ternário (7.2 GB)"
+        echo "  ./manage.sh start bonsai-27b           # 27B 1-bit (3.8 GB)"
+        echo "  ./manage.sh start bonsai-27b-nothink    # 27B 1-bit (thinking OFF)"
+        echo "  ./manage.sh start ternary-bonsai        # 27B ternário (7.2 GB)"
+        echo "  ./manage.sh start ternary-bonsai-nothink # 27B ternário (thinking OFF)"
         echo "  ./manage.sh stop gemma2           # Para finalizar modelo"
         echo "  ./manage.sh stop-all              # Para finalizar todos os modelos"
         echo "  ./manage.sh status                # Para ver o que está ativo"
