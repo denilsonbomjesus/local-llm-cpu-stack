@@ -3,7 +3,7 @@ models:
     type: code
     endpoint: http://localhost:8003
 
-  qwen2.5-vl-3b-abliterated:
+  qwen2.5-vl-3b-uncensored:
     type: vision
     endpoint: http://localhost:8010
 

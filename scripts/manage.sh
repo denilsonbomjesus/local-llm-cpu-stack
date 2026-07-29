@@ -29,7 +29,7 @@ unset _SAVED_ARGS
 # ------------------------------------------------------------
 # Device mapping FINAL - validado no i5-1235U Iris Xe:
 #   ❌  Qwen-Coder (qwen-coder)              → OpenVINO corrompe saida     → GGML nativo CPU
-#   ❌  Qwen-VL   (vision)                   → OpenVINO shape mismatch     → GGML nativo CPU
+#   ❌  Qwen-VL   (qwen-vl-uncensored)        → OpenVINO shape mismatch     → GGML nativo CPU
 #   ✅  Bonsai 27B 1-bit                     → Q1_0 nativo (mainline)     → GGML nativo CPU
 #   ✅  Ternary Bonsai 27B                   → Q2_0_g64 nativo (mainline) → GGML nativo CPU
 #
@@ -46,12 +46,12 @@ configure_openvino_for_model() {
             LLAMA="$LLAMA_CPU"
             echo "ℹ️  Qwen-Coder: OpenVINO GPU corrompe output. Usando GGML nativo (CPU)."
             ;;
-        vision)
-            # Qwen-VL: OpenVINO INCOMPATIVEL (tensor shape mismatch no GPU)
+        qwen-vl-uncensored)
+            # Qwen-VL uncensored (abliterated): OpenVINO INCOMPATIVEL
             unset GGML_OPENVINO_DEVICE
             unset GGML_OPENVINO_STATEFUL_EXECUTION
             LLAMA="$LLAMA_CPU"
-            echo "ℹ️  Qwen-VL: OpenVINO incompativel. Usando GGML nativo (CPU)."
+            echo "ℹ️  Qwen-VL Uncensored: OpenVINO incompativel. Usando GGML nativo (CPU)."
             ;;
         bonsai-27b|bonsai-27b-nothink)
             # Bonsai 27B 1-bit: Q1_0_g128 — mainline llama.cpp
@@ -124,7 +124,7 @@ server_cmd_for() {
     local llama="$LLAMA"
     case "$model" in
         qwen-coder) echo "$llama -m $BASE/models/code/qwen2.5-coder-3b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH --port 8003" ;;
-        vision)     echo "$llama -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf -t $THREADS -c $CTX --port 8010" ;;
+        qwen-vl-uncensored) echo "$llama -m $BASE/models/vision/qwen2.5-vl-3b-uncensored-Q4_K_M.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-uncensored-mmproj-Q8_0.gguf -t $THREADS -c $CTX --port 8010" ;;
         bonsai-27b)           echo "$llama -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --port 8011" ;;
         bonsai-27b-nothink)    echo "$llama -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off --port 8013" ;;
         ternary-bonsai)        echo "$llama -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH --port 8012" ;;
@@ -175,7 +175,7 @@ start_model() {
     local cmd
     cmd=$(server_cmd_for "$model")
     if [ -z "$cmd" ]; then
-        echo "Uso: ./manage.sh start {qwen-coder|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lfm25|nanbeige|nanbeige-nothink|minicpm5|minicpm5-nothink|gateway}"
+        echo "Uso: ./manage.sh start {qwen-coder|qwen-vl-uncensored|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lfm25|nanbeige|nanbeige-nothink|minicpm5|minicpm5-nothink|gateway}"
         return
     fi
 
@@ -217,7 +217,7 @@ function stop_model() {
 
 function status() {
     echo "--- Status dos Modelos (Sessões TMUX) ---"
-    tmux ls 2>/dev/null | grep -E "qwen-coder|vision|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lfm25|nanbeige|nanbeige-nothink|minicpm5|minicpm5-nothink|gateway" || echo "Nenhum serviço rodando no momento."
+    tmux ls 2>/dev/null | grep -E "qwen-coder|qwen-vl-uncensored|bonsai-27b|bonsai-27b-nothink|ternary-bonsai|ternary-bonsai-nothink|gemma4-e2b|gemma4-e2b-nothink|gemma4-e2b-vision|gemma4-e2b-vision-nothink|gemma4-e4b|gemma4-e4b-nothink|gemma4-e4b-vision|gemma4-e4b-vision-nothink|dolphin3|lfm25|nanbeige|nanbeige-nothink|minicpm5|minicpm5-nothink|gateway" || echo "Nenhum serviço rodando no momento."
 }
 
 # Lógica Principal do Script
@@ -230,7 +230,7 @@ case $1 in
         ;;
     stop-all)
         echo "Finalizando todos os serviços..."
-        for s in qwen-coder vision bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gemma4-e2b gemma4-e2b-nothink gemma4-e2b-vision gemma4-e2b-vision-nothink gemma4-e4b gemma4-e4b-nothink gemma4-e4b-vision gemma4-e4b-vision-nothink dolphin3 lfm25 nanbeige nanbeige-nothink minicpm5 minicpm5-nothink gateway; do
+        for s in qwen-coder qwen-vl-uncensored bonsai-27b bonsai-27b-nothink ternary-bonsai ternary-bonsai-nothink gemma4-e2b gemma4-e2b-nothink gemma4-e2b-vision gemma4-e2b-vision-nothink gemma4-e4b gemma4-e4b-nothink gemma4-e4b-vision gemma4-e4b-vision-nothink dolphin3 lfm25 nanbeige nanbeige-nothink minicpm5 minicpm5-nothink gateway; do
             stop_model $s
         done
         ;;
@@ -251,7 +251,7 @@ case $1 in
         echo ""
         echo "ALVOS DISPONÍVEIS (Modelos & Serviços):"
         echo "  qwen-coder          - Especialista em Programação (Qwen) [Porta 8003]"
-        echo "  vision              - Servidor de Visão (Qwen-VL) [Porta 8010]"
+        echo "  qwen-vl-uncensored   - Qwen2.5-VL 3B abliterado (sem censura) Q4_K_M [Porta 8010]"
         echo "  bonsai-27b           - 27B 1-bit (89.5% FP16) ~4-8 tok/s [Porta 8011]"
         echo "  bonsai-27b-nothink    - 27B 1-bit (thinking OFF) resposta direta [Porta 8013]"
         echo "  ternary-bonsai        - 27B ternário (94.6% FP16) ~2-5 tok/s [Porta 8012]"
@@ -274,7 +274,7 @@ case $1 in
         echo ""
         echo "EXEMPLOS PRÁTICOS:"
         echo "  ./manage.sh start qwen-coder      # Para começar a programar"
-        echo "  ./manage.sh start vision          # Para analisar imagens"
+        echo "  ./manage.sh start qwen-vl-uncensored  # Qwen2.5-VL 3B abliterado (visão sem censura)"
         echo "  ./manage.sh start bonsai-27b           # 27B 1-bit (3.8 GB)"
         echo "  ./manage.sh start bonsai-27b-nothink    # 27B 1-bit (thinking OFF)"
         echo "  ./manage.sh start ternary-bonsai        # 27B ternário (7.2 GB)"

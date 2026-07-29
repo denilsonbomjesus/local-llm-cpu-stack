@@ -247,32 +247,34 @@ wget -O MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf \
   https://huggingface.co/ewinregirgojr/MiniCPM5-1B-Agentic-Tooluse-GGUF/resolve/main/MiniCPM5-1B-Agentic-Tooluse-Nemotron-DPO.Q8_0.gguf
 ```
 
-### 3.3. Visão 
+### 3.3. Visão
 
-#### Qwen2.5‑VL‑3B‑Abliterated‑Caption‑it (GGUF)
+#### Qwen2.5-VL-3B-Uncensored (Q4_K_M)
 
-Repo: `prithivMLmods/Qwen2.5-VL-Abliterated-Caption-GGUF`. [huggingface](https://huggingface.co/prithivMLmods/Qwen2.5-VL-Abliterated-Caption-GGUF)
+O **Qwen2.5-VL-3B-Uncensored** (também chamado de Abliterated) é uma versão do Qwen2.5-VL-3B-Instruct com as recusas de conteúdo removidas (uncensored). Usa `llama.cpp` multimodal nativo com suporte a imagens via mmproj.
 
-Arquivo 3B disponível na tree GGUF:
+Repo: `mradermacher/Qwen2.5-VL-3B-Instruct-abliterated-GGUF`. [huggingface](https://huggingface.co/mradermacher/Qwen2.5-VL-3B-Instruct-abliterated-GGUF)
 
-- `Qwen2.5-VL-3B-Abliterated-Caption-it.IQ4_XS.gguf` (4‑bit IQ4_XS, otimizada, ainda 4‑bit; e explicitamente Abliterated / Uncensored). [huggingface](https://huggingface.co/prithivMLmods/Qwen2.5-VL-Abliterated-Caption-GGUF/tree/main/Qwen2.5-VL-3B-Abliterated-Caption-it-GGUF)
+- **Modelo:** `qwen2.5-vl-3b-uncensored-Q4_K_M.gguf` (1.8 GB) — Q4_K_M, qualidade/recomendado
+- **mmproj:** `qwen2.5-vl-3b-uncensored-mmproj-Q8_0.gguf` (1.3 GB Q8_0, visão)
+- **RAM (4K ctx):** ~3.1 GB total (1.8 GB modelo + 1.3 GB mmproj) ✅ cabe em 8 GB WSL2
+- **Velocidade CPU (i5):** ~15-25 tok/s
+- **Short name (chat.sh/manage.sh):** `qwen-vl-uncensored`
+- **Porta:** 8010
+
+> **Sobre mmproj Q8_0:** O repositório `mradermacher` não inclui arquivos mmproj. Usamos o mmproj Q8_0 (f16 convertido) do repo `lmstudio-community/Qwen2.5-VL-3B-Instruct-GGUF`, que é totalmente compatível por ser a mesma arquitetura. O mmproj (projeção do encoder de visão) só existe em formatos f16/Q8_0 — não há versão Q4_K_M.
 
 ```bash
 cd ~/llm-stack/models/vision
-wget -O qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf \
-  https://huggingface.co/prithivMLmods/Qwen2.5-VL-Abliterated-Caption-GGUF/resolve/main/Qwen2.5-VL-3B-Abliterated-Caption-it-GGUF/Qwen2.5-VL-3B-Abliterated-Caption-it.IQ4_XS.gguf
-```
 
-#### Download do mmproj 
-O arquivo é os "olhos" do Qwen2.5-VL-3B.
+# Modelo principal (Q4_K_M)
+wget -O qwen2.5-vl-3b-uncensored-Q4_K_M.gguf \
+  https://huggingface.co/mradermacher/Qwen2.5-VL-3B-Instruct-abliterated-GGUF/resolve/main/Qwen2.5-VL-3B-Instruct-abliterated.Q4_K_M.gguf
 
-Execute este comando:
-```bash
-wget -O ~/llm-stack/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf \
+# mmproj (compatível, Q8_0)
+wget -O qwen2.5-vl-3b-uncensored-mmproj-Q8_0.gguf \
   https://huggingface.co/lmstudio-community/Qwen2.5-VL-3B-Instruct-GGUF/resolve/main/mmproj-model-f16.gguf
 ```
-
-> Obs.: não vi Q4_K_M explicitamente na tree, mas IQ4_XS é uma variante 4‑bit compacta, adequada para CPU. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)
 
 ### 3.5. Gemma 4 (E2B & E4B)
 
@@ -353,7 +355,7 @@ No terminal (WSL2), execute:
 
 **Opções disponíveis:**
 - `qwen-coder`         → Porta 8003 (Qwen Coder 3B Q4_K_M ~12-20 tok/s)
-- `vision`             → Porta 8010 (Qwen-VL Python Server)
+- `qwen-vl-uncensored` → Porta 8010 (Qwen2.5-VL-3B abliterado Q4_K_M ~15-25 tok/s)
 - `bonsai-27b`         → Porta 8011 (Bonsai 27B 1-bit ~4-8 tok/s)
 - `bonsai-27b-nothink` → Porta 8013 (Bonsai 27B, thinking OFF)
 - `ternary-bonsai`     → Porta 8012 (Ternary Bonsai 27B ~2-5 tok/s)
@@ -404,74 +406,34 @@ Isso já deve retornar JSON no formato OpenAI. [learn.arm](https://learn.arm.com
 
 ***
 ## 🧠 10. Visão – servidores
-### 10.1. Qwen2.5‑VL‑3B‑Abliterated (caption sem censura, em WSL2)
-Para visão, hoje não há suporte multimodal de Qwen‑VL direto no `llama.cpp` vanilla, então vamos fazer um micro‑servidor Python usando Hugging Face Transformers, rodando CPU‑only (rápido o suficiente para imagens pontuais). [huggingface](https://huggingface.co/prithivMLmods/Qwen2.5-VL-Abliterated-Caption-GGUF)
+### 10.1. Visão via llama.cpp (GGUF multimodal nativo)
+O `llama.cpp` agora suporta modelos multimodais nativamente via GGUF. O **Qwen2.5-VL-3B-Uncensored** roda diretamente no `llama-server` com suporte a imagens através do mmproj.
 
-#### 10.1.1. Ambiente Python de visão (WSL2)
-
+**Comando (via manage.sh):**
 ```bash
-cd ~/llm-stack/vision
-python3 -m venv venv
-source venv/bin/activate
-
-pip install --upgrade pip
-pip install "transformers>=4.40.0" "accelerate" "torch" "safetensors" pillow fastapi uvicorn[standard]
+./scripts/manage.sh start qwen-vl-uncensored
 ```
 
-> Torch CPU simples é suficiente para o seu caso; se quiser otimizar mais tarde, dá para trocar backend.  
-
-#### 10.1.2. Servidor FastAPI para Qwen‑VL Abliterated
-
-`~/llm-stack/vision/qwen_vl_server.py`:
-
-```python
-from fastapi import FastAPI, UploadFile, File
-from pydantic import BaseModel
-from typing import List, Optional
-from PIL import Image
-import io
-
-from transformers import AutoProcessor, AutoModelForVision2Seq
-
-MODEL_ID = "prithivMLmods/Qwen2.5-VL-3B-Abliterated-Caption-GGUF"
-
-app = FastAPI()
-
-print("Loading Qwen2.5-VL-3B-Abliterated model...")
-processor = AutoProcessor.from_pretrained(MODEL_ID, trust_remote_code=True)
-model = AutoModelForVision2Seq.from_pretrained(MODEL_ID, trust_remote_code=True)
-
-class CaptionRequest(BaseModel):
-    prompt: Optional[str] = "Describe this image in detail."
-
-@app.post("/v1/images/captions")
-async def caption_image(request: CaptionRequest = None, file: UploadFile = File(...)):
-    image_bytes = await file.read()
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    prompt = (request.prompt if request and request.prompt else
-              "Describe this image in detail.")
-    inputs = processor(text=prompt, images=image, return_tensors="pt")
-    out = model.generate(**inputs, max_new_tokens=128)
-    caption = processor.batch_decode(out, skip_special_tokens=True)[0]
-    return {"caption": caption}
+**Chat interativo:**
+```bash
+./scripts/chat.sh qwen-vl-uncensored
+# Depois use /image caminho/da/imagem.jpg dentro do chat
 ```
 
-> Observação: o modelo base do repo é Qwen2.5‑VL Abliterated; o arquivo GGUF é usado para `llama.cpp`, mas aqui usamos o modelo HF original (não‑GGUF) do mesmo repo; isso te dá um endpoint dedicado de caption. [huggingface](https://huggingface.co/prithivMLmods/Qwen2.5-VL-Abliterated-Caption-GGUF/tree/main/Qwen2.5-VL-3B-Abliterated-Caption-it-GGUF)
-
-Rodar:
-
+**Teste via HTTP:**
 ```bash
-cd ~/llm-stack/vision
-source venv/bin/activate
-tmux new-session -d -s qwen-vl \
-  "uvicorn qwen_vl_server:app --host 0.0.0.0 --port 8010"
-```
-
-Teste:
-
-```bash
-curl -X POST "http://localhost:8010/v1/images/captions" \
-  -F "file=@/caminho/para/sua_imagem.jpg"
+curl http://localhost:8010/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "qwen2.5-vl-3b-uncensored",
+    "messages": [
+      {"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": "file:///path/to/image.jpg"}},
+        {"type": "text", "text": "Descreva esta imagem em detalhes."}
+      ]}
+    ],
+    "max_tokens": 256
+  }'
 ```
 
 ***
@@ -496,7 +458,7 @@ models:
     type: code
     endpoint: http://localhost:8003
 
-  qwen2.5-vl-3b-abliterated:
+  qwen2.5-vl-3b-uncensored:
     type: vision
     endpoint: http://localhost:8010
 
@@ -734,6 +696,7 @@ curl http://localhost:9000/v1/chat/completions \
 - **Gemma 4 E4B (visão)** → ~4.9 GB + ~1 GB overhead + KV cache (~6.9 GB total em 4K ctx)
 - **LFM 2.5 1.2B Q8_0** → ~1.2 GB + ~1 GB overhead + KV cache (~2.2 GB total em 4K ctx)
 - **Nanbeige4.2-3B Q4_K_M** → ~2.4 GB + ~1 GB overhead + KV cache (~3.4 GB total em 4K ctx)
+- **Qwen2.5-VL-Uncensored Q4_K_M + mmproj** → ~1.8 GB + 1.3 GB + KV cache (~3.1 GB total em 4K ctx)
 
 Com 16 GB dá para rodar **3–4 modelos 1.5–3B** em Q4 simultâneos + sistema + n8n, desde que não exagere em contextos gigantes em todos ao mesmo tempo. [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
 
@@ -817,4 +780,4 @@ Se você quiser conversar com um modelo diretamente pelo terminal (sem passar pe
 ### 12.5. Gateway retornando 400 “Unknown model”
 - O campo `"model"` no JSON deve bater com a chave em `models.yaml` (`qwen2.5-coder-3b`, `nanbeige4.2-3b`, `bonsai-27b-1bit`, etc.).
 ### 12.6. Qwen‑VL lento
-- VLMs são mais pesados que LLMs puros; use para tarefas pontuais (captioning, não chat longo). [huggingface](https://huggingface.co/prithivMLmods/Qwen2.5-VL-Abliterated-Caption-GGUF)
+- VLMs são mais pesados que LLMs puros; use para tarefas pontuais (captioning, não chat longo).

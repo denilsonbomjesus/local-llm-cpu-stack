@@ -38,7 +38,7 @@ export LC_ALL=C.UTF-8
 # ------------------------------------------------------------
 # Device mapping FINAL - validado no i5-1235U Iris Xe:
 #   ❌  Qwen-Coder (qwen-coder)              → OpenVINO corrompe saida     → GGML nativo CPU
-#   ❌  Qwen-VL   (vision)                   → OpenVINO shape mismatch     → GGML nativo CPU
+#   ❌  Qwen-VL   (qwen-vl-uncensored)        → OpenVINO shape mismatch     → GGML nativo CPU
 #   ✅  Bonsai 27B 1-bit                     → Q1_0 nativo (mainline)     → GGML nativo CPU
 #   ✅  Ternary Bonsai 27B                   → Q2_0_g64 nativo (mainline) → GGML nativo CPU
 #
@@ -57,14 +57,12 @@ configure_openvino_for_model() {
             CLI="$CLI_CPU"
             echo "ℹ️  Qwen-Coder: OpenVINO GPU corrompe output. Usando GGML nativo (CPU)."
             ;;
-        vision)
-            # Qwen-VL: OpenVINO INCOMPATIVEL (tensor shape mismatch no GPU)
-            # O modelo multimodal tem shapes dinamicos que o OpenVINO GPU nao gerencia.
-            # Erro tipico: espera [1,1,2,256] mas recebe [1,2,2,128]
+        qwen-vl-uncensored)
+            # Qwen-VL uncensored (abliterated): OpenVINO INCOMPATIVEL
             unset GGML_OPENVINO_DEVICE
             unset GGML_OPENVINO_STATEFUL_EXECUTION
             CLI="$CLI_CPU"
-            echo "ℹ️  Qwen-VL: OpenVINO incompativel. Usando GGML nativo (CPU)."
+            echo "ℹ️  Qwen-VL Uncensored: OpenVINO incompativel. Usando GGML nativo (CPU)."
             ;;
         bonsai-27b|bonsai-27b-nothink)
             # Bonsai 27B 1-bit: Q1_0_g128 — suportado nativamente no mainline llama.cpp
@@ -141,7 +139,7 @@ chat_cmd_for() {
     local cli="$CLI"
     case "$model" in
         qwen-coder) echo "$cli -m $BASE/models/code/qwen2.5-coder-3b-instruct-q4_k_m.gguf -t $THREADS -c $CTX -b $BATCH" ;;
-        vision)     echo "$cli -m $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it-iq4_xs.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-abliterated-caption-it.mmproj-Q8_0.gguf -t $THREADS -c $CTX" ;;
+        qwen-vl-uncensored) echo "$cli -m $BASE/models/vision/qwen2.5-vl-3b-uncensored-Q4_K_M.gguf --mmproj $BASE/models/vision/qwen2.5-vl-3b-uncensored-mmproj-Q8_0.gguf -t $THREADS -c $CTX" ;;
         bonsai-27b)           echo "$cli -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH" ;;
         bonsai-27b-nothink)    echo "$cli -m $BASE/models/bonsai/Bonsai-27B-Q1_0.gguf -t $THREADS -c $CTX -b $BATCH --jinja --reasoning off" ;;
         ternary-bonsai)        echo "$cli -m $BASE/models/bonsai/Ternary-Bonsai-27B-Q2_g64.gguf -t $THREADS -c $CTX -b $BATCH" ;;
@@ -199,7 +197,7 @@ function show_help() {
     echo ""
     echo "MODELOS DISPONÍVEIS:"
     echo "  qwen-coder         - Chat focado em programação"
-    echo "  vision             - Chat de visão (Análise de imagens via Terminal)"
+    echo "  qwen-vl-uncensored - Qwen2.5-VL 3B abliterado (sem censura) Q4_K_M ~15-25 tok/s [3.1 GB]"
     echo "  bonsai-27b           - 27B 1-bit (89.5% FP16) ~4-8 tok/s [3.8 GB]"
     echo "  bonsai-27b-nothink    - 27B 1-bit (thinking OFF) resposta direta [3.8 GB]"
     echo "  ternary-bonsai        - 27B ternário (94.6% FP16) ~2-5 tok/s [7.2 GB]"

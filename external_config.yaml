@@ -41,7 +41,7 @@ models:
     endpoint: http://localhost:9000/v1/chat/completions
 
   # Modelos de Visão (como o seu servidor Python ou o Windows)
-  qwen2.5-vl-3b-abliterated:
+  qwen2.5-vl-3b-uncensored:
     endpoint: http://localhost:8010/v1/images/captions
   # phi-3.5-vision-ov:
   #   endpoint: http://host.docker.internal:8011/v1/images/captions

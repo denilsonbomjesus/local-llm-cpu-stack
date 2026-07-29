@@ -180,7 +180,7 @@ case "$MODE" in
         echo ""
 
         test_chat "qwen-coder"    "Qwen-Coder"
-        test_chat "vision"        "Qwen-VL (visao)"
+        test_chat "qwen-vl-uncensored" "Qwen-VL Uncensored (visao)"
         test_chat "dolphin3"      "Dolphin3.0"
         test_chat "lfm25"         "LFM 2.5"
         test_chat "nanbeige"      "Nanbeige4.2"
@@ -194,7 +194,7 @@ case "$MODE" in
         echo ""
 
         test_server "qwen-coder"   8003 "Qwen-Coder"
-        test_server "vision"       8010 "Qwen-VL (visao)"
+        test_server "qwen-vl-uncensored" 8010 "Qwen-VL Uncensored (visao)"
         test_server "dolphin3"     8041 "Dolphin3.0"
         test_server "lfm25"        8061 "LFM 2.5"
         test_server "nanbeige"     8071 "Nanbeige4.2"
@@ -212,7 +212,7 @@ case "$MODE" in
         echo "──────────────────────────────────────────────"
 
         test_chat "qwen-coder"    "Qwen-Coder"
-        test_chat "vision"        "Qwen-VL (visao)"
+        test_chat "qwen-vl-uncensored" "Qwen-VL Uncensored (visao)"
         test_chat "dolphin3"      "Dolphin3.0"
         test_chat "lfm25"         "LFM 2.5"
         test_chat "nanbeige"      "Nanbeige4.2"
@@ -224,7 +224,7 @@ case "$MODE" in
         echo "──────────────────────────────────────────────"
 
         test_server "qwen-coder"   8003 "Qwen-Coder"
-        test_server "vision"       8010 "Qwen-VL (visao)"
+        test_server "qwen-vl-uncensored" 8010 "Qwen-VL Uncensored (visao)"
         test_server "dolphin3"     8041 "Dolphin3.0"
         test_server "lfm25"        8061 "LFM 2.5"
         test_server "nanbeige"     8071 "Nanbeige4.2"
