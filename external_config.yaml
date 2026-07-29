@@ -33,6 +33,8 @@ models:
     endpoint: http://localhost:9000/v1/chat/completions
   dolphin3.0-llama3.2-3b:
     endpoint: http://localhost:9000/v1/chat/completions
+  lexi-llama-3-8b-uncensored:
+    endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e4b-vision:
     endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e4b-vision-nothink:

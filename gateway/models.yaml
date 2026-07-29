@@ -75,6 +75,10 @@ models:
     type: text
     endpoint: http://localhost:8041
 
+  lexi-llama-3-8b-uncensored:
+    type: text
+    endpoint: http://localhost:8051
+
   # phi-3.5-vision-ov:
   #   type: vision
   #   endpoint: http://<IP_Windows>:8011

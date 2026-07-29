@@ -172,6 +172,25 @@ wget -O Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf \
   https://huggingface.co/bartowski/Dolphin3.0-Llama3.2-3B-GGUF/resolve/main/Dolphin3.0-Llama3.2-3B-Q4_K_M.gguf
 ```
 
+#### Lexi-Llama-3-8B-Uncensored (Q4_K_M)
+
+O **Lexi-Llama-3-8B-Uncensored** é um modelo Llama 3 8B fine-tuned pela comunidade para ser uncensored e versátil. Ótimo para tarefas complexas, raciocínio e respostas sem restrições.
+
+Repo: `Orenguteng/Llama-3-8B-Lexi-Uncensored-GGUF`. [huggingface](https://huggingface.co/Orenguteng/Llama-3-8B-Lexi-Uncensored-GGUF)
+
+- **Arquivo:** `Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf` (4.6 GB)
+- **Qualidade:** Excelente para tarefas complexas, raciocínio, coding, chat uncensored
+- **RAM (4K ctx):** ~6.1 GB ⚠️ apertado em 8 GB WSL2
+- **Velocidade CPU (i5):** ~8-15 tok/s
+- **Sem thinking mode** (Llama 3 base, sem tokens especiais de raciocínio)
+
+```bash
+cd ~/llm-stack/models/text
+
+wget -O Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf \
+  https://huggingface.co/Orenguteng/Llama-3-8B-Lexi-Uncensored-GGUF/resolve/main/Lexi-Llama-3-8B-Uncensored_Q4_K_M.gguf
+```
+
 #### Qwen2.5‑1.5B‑Instruct‑Q4_K_M.gguf
 
 Repo oficial GGUF: `Qwen/Qwen2.5-1.5B-Instruct-GGUF`. [huggingface](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)
@@ -358,6 +377,7 @@ No terminal (WSL2), execute:
 - `gemma4-e4b`        → Porta 8022 (Gemma 4 E4B 4.5B ~10-15 tok/s, texto puro)
 - `gemma4-e4b-nothink`→ Porta 8024 (Gemma 4 E4B, thinking OFF)
 - `dolphin3`          → Porta 8041 (Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s)
+- `lexi8b`            → Porta 8051 (Lexi-Llama-3-8B-Uncensored Q4_K_M ~8-15 tok/s)
 - `gemma4-e4b-vision` → Porta 8032 (Gemma 4 E4B + visão)
 - `gemma4-e4b-vision-nothink`→ Porta 8034 (Gemma 4 E4B + visão, thinking OFF)
 - `gateway`            → Porta 9000 (O Roteador Central)
