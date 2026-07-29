@@ -219,16 +219,16 @@ wget -O gemma-2-2b-it-abliterated-q4_k_m.gguf \
   https://huggingface.co/bartowski/gemma-2-2b-it-abliterated-GGUF/resolve/main/gemma-2-2b-it-abliterated-Q4_K_M.gguf
 ```
 ### 3.2. Código
-#### Qwen2.5‑Coder‑1.5B‑Instruct‑Q4_K_M.gguf
+#### Qwen2.5‑Coder‑3B‑Instruct‑Q4_K_M.gguf
 
-Repo GGUF: `bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF`. [huggingface](https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF)
+Repo oficial GGUF: `Qwen/Qwen2.5-Coder-3B-Instruct-GGUF`. [huggingface](https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF)
 
-Arquivo recomendado: `Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf` (4‑bit, “default size for must use cases, *recommended*”). [huggingface](https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF)
+Arquivo: `qwen2.5-coder-3b-instruct-q4_k_m.gguf` (2.0 GB, Q4_K_M, ~3B params, recomendado). [huggingface](https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF)
 
 ```bash
 cd ~/llm-stack/models/code
-wget -O qwen2.5-coder-1.5b-instruct-q4_k_m.gguf \
-  https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-Coder-1.5B-Instruct-Q4_K_M.gguf
+wget -O qwen2.5-coder-3b-instruct-q4_k_m.gguf \
+  https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf
 ```
 
 #### Ministral-3-3b-instruct-2512-q4_k_m.gguf
@@ -399,8 +399,7 @@ wget -O gemma-4-E4B-it-mmproj.gguf \
 
 ***
 ## 🧠 2b. O que é Q4_K_M / IQ4_XS?
-- **Q4_K_M**: quantização 4‑bit em “super‑blocos” com estatísticas por bloco, 4.5 bits por peso, trade‑off ótimo de qualidade vs RAM – a opção normalmente recomendada para uso geral. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)
-- **IQ4_XS**: variante “imatrix” super‑compacta 4‑bit, com compressão adicional e pequena perda de qualidade, muito usada em modelos pequenos para reduzir footprint. [huggingface](https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF)
+- **Q4_K_M**: quantização 4‑bit em “super‑blocos” com estatísticas por bloco, 4.5 bits por peso, trade‑off ótimo de qualidade vs RAM – a opção normalmente recomendada para uso geral. [huggingface](https://huggingface.co/TheBloke/deepseek-coder-1.3b-instruct-GGUF)- **IQ4_XS**: variante “imatrix” super‑compacta 4‑bit, com compressão adicional e pequena perda de qualidade, muito usada em modelos pequenos para reduzir footprint.
 
 Alternativas:
 
@@ -421,8 +420,7 @@ No terminal (WSL2), execute:
 
 **Opções disponíveis:**
 -  `qwen-text`          → Porta 8001 (Qwen 2.5 1.5B)
-- `gemma2`             → Porta 8002 (Gemma 2 2B)
-- `qwen-coder`         → Porta 8003 (Qwen Coder 1.5B)
+- `gemma2`             → Porta 8002 (Gemma 2 2B)- `qwen-coder`         → Porta 8003 (Qwen Coder 3B Q4_K_M ~12-20 tok/s)
 - `ministral-agent`    → Porta 8004 (Ministral 3 3B)
 - `ministral-vision`   → Porta 8005 (Ministral 3 3B)
 - `vision`             → Porta 8010 (Qwen-VL Python Server)
@@ -572,7 +570,7 @@ models:
     type: text
     endpoint: http://localhost:8002
 
-  qwen2.5-coder-1.5b:
+  qwen2.5-coder-3b:
     type: code
     endpoint: http://localhost:8003
 
@@ -789,7 +787,7 @@ curl http://localhost:9000/v1/chat/completions \
 curl http://localhost:9000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "qwen2.5-coder-1.5b",
+    "model": "qwen2.5-coder-3b",
     "messages": [
       {"role": "system", "content": "Você é um assistente de código. Responda com código e breve explicação."},
       {"role": "user", "content": "Escreva uma função em C que inverta uma string in-place."}
@@ -813,8 +811,7 @@ curl http://localhost:9000/v1/chat/completions \
 
 **Memória por modelo** (aprox):
 
-- Qwen2.5‑1.5B‑Instruct‑Q4_K_M → ~1.1 GB + KV‑cache (até ~2–3 GB com contexto grande). [huggingface](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)
-- Qwen2.5‑Coder‑1.5B‑Q4_K_M → ~1.0 GB + cache. [huggingface](https://huggingface.co/bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF)
+- Qwen2.5‑1.5B‑Instruct‑Q4_K_M → ~1.1 GB + KV‑cache (até ~2–3 GB com contexto grande). [huggingface](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF)- **Qwen2.5‑Coder‑3B‑Q4_K_M** → ~2.0 GB + ~1 GB overhead + KV cache (~3.0 GB total em 4K ctx)
 - **Bonsai 27B 1-bit** → ~3.9 GB + ~1.3 GB overhead + KV cache (~5.2 GB total em 4K ctx)
 - **Ternary Bonsai 27B** → ~7.2 GB + ~1.2 GB overhead + KV cache (~8.4 GB total em 4K ctx)
 - **Gemma 4 E2B (texto)** → ~3.2 GB + ~1 GB overhead + KV cache (~4.2 GB total em 4K ctx)
@@ -904,6 +901,6 @@ Se você quiser conversar com um modelo diretamente pelo terminal (sem passar pe
   - Compare com caminho em `-m`.  
 - Se baixar de novo, confira se `wget` não salvou com nome diferente (`?download=1` etc.).
 ### 12.5. Gateway retornando 400 “Unknown model”
-- O campo `"model"` no JSON deve bater com a chave em `models.yaml` (`qwen2.5-1.5b-instruct`, `qwen2.5-coder-1.5b`, etc.).
+- O campo `"model"` no JSON deve bater com a chave em `models.yaml` (`qwen2.5-1.5b-instruct`, `qwen2.5-coder-3b`, etc.).
 ### 12.6. Qwen‑VL lento
 - VLMs são mais pesados que LLMs puros; use para tarefas pontuais (captioning, não chat longo). [huggingface](https://huggingface.co/prithivMLmods/Qwen2.5-VL-Abliterated-Caption-GGUF)

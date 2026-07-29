@@ -5,7 +5,7 @@ models:
     endpoint: http://localhost:9000/v1/chat/completions
   gemma-2-2b-abliterated:
     endpoint: http://localhost:9000/v1/chat/completions
-  qwen2.5-coder-1.5b:
+  qwen2.5-coder-3b:
     endpoint: http://localhost:9000/v1/chat/completions
   ministral-agent:
     endpoint: http://localhost:9000/v1/chat/completions
@@ -71,7 +71,7 @@ models:
 
 # JSON
 # {
-#   "model": "qwen2.5-coder-1.5b",
+#   "model": "qwen2.5-coder-3b",
 #   "messages": [
 #     { "role": "user", "content": "Corrija este código Python..." }
 #   ]
