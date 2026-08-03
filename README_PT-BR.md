@@ -20,13 +20,12 @@ O projeto está organizado para manter modelos, servidores e scripts isolados:
 
 ```bash
 ~/llm-stack
-  ├── llama.cpp/               # Código-fonte e binários compilados
+  ├── llama.cpp/               # Código-fonte e binários compilados (build/CPU/)
   ├── models/                  # Arquivos .gguf organizados por categoria
   │   ├── text/                # Gemma 4 (E2B/E4B), Dolphin3.0
   │   ├── code/                # Qwen2.5-Coder, LFM 2.5, Nanbeige4.2, MiniCPM5-1B
   │   ├── vision/              # Qwen2.5-VL (Modelo + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
-  ├── vision/                  # Servidor Python para o Qwen-VL
   ├── gateway/                 # Roteador FastAPI (Porta 9000)
   ├── scripts/                 # Scripts de controle (manage.sh, chat.sh)
   ├── logs/                    # Logs de execução (opcional)
@@ -48,13 +47,9 @@ sudo apt install -y \
   curl wget \
   tmux \
   jq
-
-# OpenCL (obrigatório para compilar com OpenVINO e usar a GPU Intel Iris Xe)
-sudo apt install -y \
-  ocl-icd-opencl-dev opencl-headers opencl-clhpp-headers intel-opencl-icd
 ```
 
-Isso cobre compilação do `llama.cpp` (com ou sem OpenVINO), Python para gateway/vision, `tmux` para rodar em background. [github](http://github.com/ggml-org/llama.cpp)
+Isso cobre compilação do `llama.cpp` (GGML nativo CPU), Python para o gateway e `tmux` para rodar em background. [github](http://github.com/ggml-org/llama.cpp)
 
 Se quiser Node.js (opcional, não vou usar aqui):
 
@@ -64,7 +59,7 @@ sudo apt install -y nodejs
 ```
 
 ***
-## 🧠 2. Clonar e compilar `llama.cpp` (CPU-only + OpenVINO opcional)
+## 🧠 2. Clonar e compilar `llama.cpp` (GGML nativo CPU)
 Vou usar o repositório oficial `ggml-org/llama.cpp`. [github](http://github.com/ggml-org/llama.cpp)
 ### 2.1. Clone
 ```bash
@@ -72,7 +67,7 @@ cd ~/llm-stack
 git clone https://github.com/ggml-org/llama.cpp.git
 cd llama.cpp
 ```
-### 2.2. Build otimizado (Release, com suporte a K‑quants e HTTP, sem aceleração extra)
+### 2.2. Build (Release, GGML nativo CPU)
 ```bash
 mkdir -p build
 cd build
@@ -82,66 +77,7 @@ cmake --build . -j"$(nproc)"
 
 Isso gera binários em `~/llm-stack/llama.cpp/build/` (`llama-cli`, `llama-server`, etc.). [github](http://github.com/ggml-org/llama.cpp)
 
-> Nota: não vamos ativar CUDA/CL aqui para manter a simplicidade e foco em CPU; a performance nos modelos escolhidos é excelente mesmo sem aceleração de GPU dedicada.
-
-### 2.3. Build com OpenVINO (para Intel CPU/GPU — RECOMENDADO para seu hardware)
-
-Se você tem um processador Intel (especialmente 11ª/12ª/13ª geração ou Intel Core Ultra) com placa integrada Intel Iris Xe, esta opção oferece:
-- **Prompt processing ~2-3x mais rápido** (primeira resposta chega mais rápido)
-- **Token generation 10-30% mais rápido** (texto gerado por segundo)
-- **Suporte a AVX-VNNI** (instruções vetoriais otimizadas da Intel)
-- **Offloading para Iris Xe iGPU** via OpenCL
-
-#### 2.3.1. Instalar OpenVINO Runtime
-```bash
-cd ~
-# Download do OpenVINO 2026.2.1 para Ubuntu 24.04
-wget https://storage.openvinotoolkit.org/repositories/openvino/packages/2026.2.1/linux/openvino_toolkit_ubuntu24_2026.2.1.21919.ede283a88e3_x86_64.tgz -O openvino.tgz
-
-# Extrair para /opt/intel/
-sudo mkdir -p /opt/intel/openvino_2026.2.1
-sudo tar -xzf openvino.tgz -C /opt/intel/openvino_2026.2.1 --strip-components=1
-sudo ln -sfn /opt/intel/openvino_2026.2.1 /opt/intel/openvino
-rm openvino.tgz
-
-# Instalar dependências de runtime do OpenVINO
-sudo -E /opt/intel/openvino/install_dependencies/install_openvino_dependencies.sh -y
-```
-
-#### 2.3.2. Compilar llama.cpp com OpenVINO
-```bash
-cd ~/llm-stack/llama.cpp
-
-# Ativar ambiente OpenVINO
-source /opt/intel/openvino/setupvars.sh
-
-# Limpar build anterior (se existir)
-rm -rf build
-
-# Configurar com CMake (usando Ninja para compilação mais rápida)
-cmake -B build/ReleaseOV -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DGGML_OPENVINO=ON
-
-# Compilar (12 threads)
-cmake --build build/ReleaseOV --parallel
-```
-
-Isso gera binários em `~/llm-stack/llama.cpp/build/ReleaseOV/bin/`.
-
-#### 2.3.3. Adicionar ao ~/.bashrc (automático)
-Adicione estas linhas ao final do `~/.bashrc`:
-
-```bash
-# === OpenVINO ===
-if [ -f /opt/intel/openvino/setupvars.sh ]; then
-    source /opt/intel/openvino/setupvars.sh
-fi
-# Usar GPU (Iris Xe) por padrão. Fallback para CPU se GPU indisponível
-export GGML_OPENVINO_DEVICE="${GGML_OPENVINO_DEVICE:-GPU}"
-```
-
-> ⚠️ **Importante sobre modelos Qwen**: Os modelos Qwen (Qwen2.5, Qwen-Coder, Qwen-VL) têm uma limitação conhecida no backend OpenVINO: a execução **stateful na GPU falha**. Os scripts `manage.sh` e `chat.sh` já incluem uma detecção automática que define `GGML_OPENVINO_STATEFUL_EXECUTION=0` para modelos Qwen e `=1` para os demais modelos.
+> Nota: não vamos ativar CUDA/OpenVINO aqui para manter a simplicidade e foco em CPU. O backend OpenVINO foi removido deste stack: ele produzia saída corrompida / erros de shape em modelos Qwen, e nenhum modelo atual o utiliza — todos rodam no build GGML nativo CPU. Se um dia quiser testar OpenVINO de novo, recompile com `-DGGML_OPENVINO=ON` em um diretório separado.
 
 ***
 ## 📥 3. Download dos modelos (WSL2)
@@ -217,7 +153,7 @@ Repo: `owao/Nanbeige4.2-3B-GGUF`. [huggingface](https://huggingface.co/owao/Nanb
 - **RAM (4K ctx):** ~3.4 GB ✅ cabe em 8 GB WSL2
 - **Velocidade CPU (i5):** ~18-30 tok/s ⚡ Rápido
 - **Com thinking mode** (tags `<think>`/`</think>` ativadas por padrão)
-- Use `nanbeige-nothink` para desligar o thinking e obter respostas mais diretas
+- Use `nanbeige-3b-nothink` para desligar o thinking e obter respostas mais diretas
 
 ```bash
 cd ~/llm-stack/models/code
@@ -237,7 +173,7 @@ Repo: `ewinregirgojr/MiniCPM5-1B-Agentic-Tooluse-GGUF`. [huggingface](https://hu
 - **RAM (4K ctx):** ~2.1 GB ✅ cabe com folga em 8 GB WSL2
 - **Velocidade CPU (i5):** ~30-50 tok/s ⚡ Muito rápido
 - **Com thinking mode** (tags `<think>`/`</think>` via `enable_thinking`)
-- Use `minicpm5-nothink` para desligar o thinking e obter respostas mais diretas
+- Use `minicpm5-1b-nothink` para desligar o thinking e obter respostas mais diretas
 - **128K contexto nativo** (recomendado manter 4K-8K para CPU)
 
 ```bash
@@ -259,7 +195,7 @@ Repo: `mradermacher/Qwen2.5-VL-3B-Instruct-abliterated-GGUF`. [huggingface](http
 - **mmproj:** `qwen2.5-vl-3b-uncensored-mmproj-Q8_0.gguf` (1.3 GB Q8_0, visão)
 - **RAM (4K ctx):** ~3.1 GB total (1.8 GB modelo + 1.3 GB mmproj) ✅ cabe em 8 GB WSL2
 - **Velocidade CPU (i5):** ~15-25 tok/s
-- **Short name (chat.sh/manage.sh):** `qwen-vl-uncensored`
+- **Short name (chat.sh/manage.sh):** `qwen-vl-3b-uncensored`
 - **Porta:** 8010
 
 > **Sobre mmproj Q8_0:** O repositório `mradermacher` não inclui arquivos mmproj. Usamos o mmproj Q8_0 (f16 convertido) do repo `lmstudio-community/Qwen2.5-VL-3B-Instruct-GGUF`, que é totalmente compatível por ser a mesma arquitetura. O mmproj (projeção do encoder de visão) só existe em formatos f16/Q8_0 — não há versão Q4_K_M.
@@ -328,7 +264,7 @@ wget -O gemma-4-E4B-it-mmproj.gguf \
   https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf/resolve/main/gemma-4-E4B-it-mmproj.gguf
 ```
 
-> **Dica de RAM:** Use as variantes **sem mmproj** (gemma4-e2b, gemma4-e4b) para economizar ~1 GB quando não for usar imagens. As variantes **-vision** (gemma4-e2b-vision, gemma4-e4b-vision) carregam o mmproj para suporte multimodal.
+> **Dica de RAM:** Use as variantes **sem mmproj** (gemma-4-e2b, gemma-4-e4b) para economizar ~1 GB quando não for usar imagens. As variantes **-vision** (gemma-4-e2b-vision, gemma-4-e4b-vision) carregam o mmproj para suporte multimodal.
 
 > **Sobre thinking mode:** Gemma 4 tem pensamento interno via `<|think|>` tokens. Use as variantes `-nothink` para desligar e obter respostas mais diretas.
 
@@ -354,27 +290,26 @@ No terminal (WSL2), execute:
 ```
 
 **Opções disponíveis:**
-- `qwen-coder`         → Porta 8003 (Qwen Coder 3B Q4_K_M ~12-20 tok/s)
-- `qwen-vl-uncensored` → Porta 8010 (Qwen2.5-VL-3B abliterado Q4_K_M ~15-25 tok/s)
+- `qwen-coder-3b`       → Porta 8003 (Qwen2.5-Coder 3B Q4_K_M ~12-20 tok/s)
+- `qwen-vl-3b-uncensored` → Porta 8010 (Qwen2.5-VL-3B abliterado Q4_K_M ~15-25 tok/s)
 - `bonsai-27b`         → Porta 8011 (Bonsai 27B 1-bit ~4-8 tok/s)
 - `bonsai-27b-nothink` → Porta 8013 (Bonsai 27B, thinking OFF)
-- `ternary-bonsai`     → Porta 8012 (Ternary Bonsai 27B ~2-5 tok/s)
-- `ternary-bonsai-nothink` → Porta 8014 (Ternary Bonsai, thinking OFF)
-- `gemma4-e2b`        → Porta 8021 (Gemma 4 E2B 2.3B ~22-35 tok/s, texto puro)
-- `gemma4-e2b-nothink`→ Porta 8023 (Gemma 4 E2B, thinking OFF)
-- `gemma4-e2b-vision` → Porta 8031 (Gemma 4 E2B + visão)
-- `gemma4-e2b-vision-nothink`→ Porta 8033 (Gemma 4 E2B + visão, thinking OFF)
-- `gemma4-e4b`        → Porta 8022 (Gemma 4 E4B 4.5B ~10-15 tok/s, texto puro)
-- `gemma4-e4b-nothink`→ Porta 8024 (Gemma 4 E4B, thinking OFF)
-- `dolphin3`          → Porta 8041 (Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s)
-
-- `lfm25`             → Porta 8061 (Liquid LFM 2.5 1.2B Q8_0 ~25-40 tok/s)
-- `nanbeige`          → Porta 8071 (Nanbeige4.2-3B Q4_K_M ~18-30 tok/s)
-- `nanbeige-nothink`   → Porta 8073 (Nanbeige4.2-3B, thinking OFF)
-- `minicpm5`           → Porta 8081 (MiniCPM5-1B Nemotron-DPO Q8_0 ~30-50 tok/s)
-- `minicpm5-nothink`    → Porta 8083 (MiniCPM5-1B, thinking OFF)
-- `gemma4-e4b-vision` → Porta 8032 (Gemma 4 E4B + visão)
-- `gemma4-e4b-vision-nothink`→ Porta 8034 (Gemma 4 E4B + visão, thinking OFF)
+- `ternary-bonsai-27b` → Porta 8012 (Ternary Bonsai 27B ~2-5 tok/s)
+- `ternary-bonsai-27b-nothink` → Porta 8014 (Ternary Bonsai 27B, thinking OFF)
+- `gemma-4-e2b`        → Porta 8021 (Gemma 4 E2B 2.3B ~22-35 tok/s, texto puro)
+- `gemma-4-e2b-nothink`→ Porta 8023 (Gemma 4 E2B, thinking OFF)
+- `gemma-4-e2b-vision` → Porta 8031 (Gemma 4 E2B + visão)
+- `gemma-4-e2b-vision-nothink`→ Porta 8033 (Gemma 4 E2B + visão, thinking OFF)
+- `gemma-4-e4b`        → Porta 8022 (Gemma 4 E4B 4.5B ~10-15 tok/s, texto puro)
+- `gemma-4-e4b-nothink`→ Porta 8024 (Gemma 4 E4B, thinking OFF)
+- `gemma-4-e4b-vision` → Porta 8032 (Gemma 4 E4B + visão)
+- `gemma-4-e4b-vision-nothink`→ Porta 8034 (Gemma 4 E4B + visão, thinking OFF)
+- `dolphin3-3b`        → Porta 8041 (Dolphin3.0 Llama3.2-3B Q4_K_M ~20-30 tok/s)
+- `lfm2.5-1.2b`        → Porta 8061 (Liquid LFM 2.5-1.2B Q8_0 ~25-40 tok/s)
+- `nanbeige-3b`        → Porta 8071 (Nanbeige4.2-3B Q4_K_M ~18-30 tok/s)
+- `nanbeige-3b-nothink`→ Porta 8073 (Nanbeige4.2-3B, thinking OFF)
+- `minicpm5-1b`        → Porta 8081 (MiniCPM5-1B Nemotron-DPO Q8_0 ~30-50 tok/s)
+- `minicpm5-1b-nothink`→ Porta 8083 (MiniCPM5-1B, thinking OFF)
 - `gateway`            → Porta 9000 (O Roteador Central)
 
 ### 4.2. Comandos úteis do Manager
@@ -389,10 +324,10 @@ O `llama-server` expõe endpoints OpenAI‑compatíveis, como `/v1/chat/completi
 Teste rápido (no WSL2):
 
 ```bash
-curl http://localhost:8001/v1/chat/completions \
+curl http://localhost:8003/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "qwen2.5-coder-3b",
+    "model": "qwen-coder-3b",
     "messages": [
       {"role": "user", "content": "Resuma em 3 pontos a função de um sistema operacional."}
     ],
@@ -411,12 +346,12 @@ O `llama.cpp` agora suporta modelos multimodais nativamente via GGUF. O **Qwen2.
 
 **Comando (via manage.sh):**
 ```bash
-./scripts/manage.sh start qwen-vl-uncensored
+./scripts/manage.sh start qwen-vl-3b-uncensored
 ```
 
 **Chat interativo:**
 ```bash
-./scripts/chat.sh qwen-vl-uncensored
+./scripts/chat.sh qwen-vl-3b-uncensored
 # Depois use /image caminho/da/imagem.jpg dentro do chat
 ```
 
@@ -425,7 +360,7 @@ O `llama.cpp` agora suporta modelos multimodais nativamente via GGUF. O **Qwen2.
 curl http://localhost:8010/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "qwen2.5-vl-3b-uncensored",
+    "model": "qwen-vl-3b-uncensored",
     "messages": [
       {"role": "user", "content": [
         {"type": "image_url", "image_url": {"url": "file:///path/to/image.jpg"}},
@@ -454,19 +389,19 @@ pip install fastapi uvicorn[standard] httpx pyyaml
 
 ```yaml
 models:
-  qwen2.5-coder-3b:
+  qwen-coder-3b:
     type: code
     endpoint: http://localhost:8003
 
-  qwen2.5-vl-3b-uncensored:
+  qwen-vl-3b-uncensored:
     type: vision
     endpoint: http://localhost:8010
 
-  bonsai-27b-1bit:
+  bonsai-27b:
     type: text
     endpoint: http://localhost:8011
 
-  bonsai-27b-1bit-nothink:
+  bonsai-27b-nothink:
     type: text
     endpoint: http://localhost:8013
 
@@ -509,6 +444,30 @@ models:
   gemma-4-e4b-vision-nothink:
     type: vision
     endpoint: http://localhost:8034
+
+  dolphin3-3b:
+    type: text
+    endpoint: http://localhost:8041
+
+  lfm2.5-1.2b:
+    type: code
+    endpoint: http://localhost:8061
+
+  nanbeige-3b:
+    type: code
+    endpoint: http://localhost:8071
+
+  nanbeige-3b-nothink:
+    type: code
+    endpoint: http://localhost:8073
+
+  minicpm5-1b:
+    type: code
+    endpoint: http://localhost:8081
+
+  minicpm5-1b-nothink:
+    type: code
+    endpoint: http://localhost:8083
 ```
 
 > Esse mesmo YAML você pode reutilizar no n8n para ter uma tabela de endpoints centralizada.
@@ -632,12 +591,12 @@ tmux new-session -d -s router \
 
 ***
 ## 🔗 8. Exemplo de consumo via HTTP (curl)
-### 8.1. Chat com Qwen‑Instruct (via gateway)
+### 8.1. Chat com Qwen‑Coder (via gateway)
 ```bash
 curl http://localhost:9000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "qwen2.5-coder-3b",
+    "model": "qwen-coder-3b",
     "messages": [
       {"role": "system", "content": "Você é um assistente técnico conciso."},
       {"role": "user", "content": "Explique brevemente o que é uma syscall."}
@@ -651,24 +610,25 @@ curl http://localhost:9000/v1/chat/completions \
 curl http://localhost:9000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "nanbeige4.2-3b",
+    "model": "nanbeige-3b",
     "messages": [
       {"role": "user", "content": "Vamos conversar sobre design de sistemas distribuídos."}
     ],
     "max_tokens": 256
   }' | jq
 ```
-### 8.3. Auxiliar de código (Qwen‑Coder) no mesmo endpoint
+### 8.3. Chat com Bonsai 27B (via gateway)
 ```bash
 curl http://localhost:9000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "qwen2.5-coder-3b",
+    "model": "bonsai-27b",
     "messages": [
-      {"role": "system", "content": "Você é um assistente de código. Responda com código e breve explicação."},
-      {"role": "user", "content": "Escreva uma função em C que inverta uma string in-place."}
+      {"role": "system", "content": "Você é um assistente técnico conciso."},
+      {"role": "user", "content": "Explique brevemente o que é uma syscall."}
     ],
-    "max_tokens": 256
+    "max_tokens": 128,
+    "temperature": 0.4
   }' | jq
 ```
 
@@ -697,6 +657,7 @@ curl http://localhost:9000/v1/chat/completions \
 - **LFM 2.5 1.2B Q8_0** → ~1.2 GB + ~1 GB overhead + KV cache (~2.2 GB total em 4K ctx)
 - **Nanbeige4.2-3B Q4_K_M** → ~2.4 GB + ~1 GB overhead + KV cache (~3.4 GB total em 4K ctx)
 - **Qwen2.5-VL-Uncensored Q4_K_M + mmproj** → ~1.8 GB + 1.3 GB + KV cache (~3.1 GB total em 4K ctx)
+- **MiniCPM5-1B Q8_0** → ~1.1 GB + ~1 GB overhead + KV cache (~2.1 GB total em 4K ctx)
 
 Com 16 GB dá para rodar **3–4 modelos 1.5–3B** em Q4 simultâneos + sistema + n8n, desde que não exagere em contextos gigantes em todos ao mesmo tempo. [skywork](https://skywork.ai/blog/models/qwen2-5-1-5b-instruct-gguf-free-chat-online-skywork-ai/)
 
@@ -704,7 +665,7 @@ Para medir performance real:
 
 ```bash
 # uma geração de teste com estatísticas
-./llama.cpp/build/ReleaseOV/bin/llama-cli \
+./llama.cpp/build/CPU/bin/llama-cli \
   -m ./models/code/qwen2.5-coder-3b-instruct-q4_k_m.gguf \
   -p "Teste de throughput." -n 256 -t 8 -c 4096 -b 256 -ngl 0 \
   --log-disable
@@ -719,13 +680,12 @@ No WSL2, a estrutura consolidada é:
 
 ```text
 ~/llm-stack
-  ├── llama.cpp/               # Binários compilados (llama-server, llama-cli em build/ReleaseOV/bin/)os compilados (llama-server, llama-cli)
+  ├── llama.cpp/               # Binários compilados (llama-server, llama-cli em build/CPU/bin/)
   ├── models/
   │   ├── text/                # .gguf de texto (Gemma 4 E2B/E4B, Dolphin3.0)
   │   ├── code/                # .gguf de código (Qwen Coder, LFM 2.5, Nanbeige4.2, MiniCPM5)
   │   ├── vision/              # .gguf de visão (Qwen-VL + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
-  ├── vision/                  # venv + qwen_vl_server.py
   ├── gateway/                 # venv + gateway_server.py + models.yaml
   ├── scripts/                 
   │   ├── manage.sh            # Script principal de controle (Start/Stop/Status)
@@ -778,6 +738,6 @@ Se você quiser conversar com um modelo diretamente pelo terminal (sem passar pe
   - Compare com caminho em `-m`.  
 - Se baixar de novo, confira se `wget` não salvou com nome diferente (`?download=1` etc.).
 ### 12.5. Gateway retornando 400 “Unknown model”
-- O campo `"model"` no JSON deve bater com a chave em `models.yaml` (`qwen2.5-coder-3b`, `nanbeige4.2-3b`, `bonsai-27b-1bit`, etc.).
+- O campo `"model"` no JSON deve bater com a chave em `models.yaml` (`qwen-coder-3b`, `nanbeige-3b`, `bonsai-27b`, etc.).
 ### 12.6. Qwen‑VL lento
 - VLMs são mais pesados que LLMs puros; use para tarefas pontuais (captioning, não chat longo).

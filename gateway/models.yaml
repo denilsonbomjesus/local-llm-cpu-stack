@@ -1,17 +1,20 @@
 models:
-  qwen2.5-coder-3b:
+  # Padrão de nomes: <fabricante>-<modelo>-<tamanho>[-variante]
+  # Os nomes abaixo batem exatamente com os short names do chat.sh/manage.sh
+
+  qwen-coder-3b:
     type: code
     endpoint: http://localhost:8003
 
-  qwen2.5-vl-3b-uncensored:
+  qwen-vl-3b-uncensored:
     type: vision
     endpoint: http://localhost:8010
 
-  bonsai-27b-1bit:
+  bonsai-27b:
     type: text
     endpoint: http://localhost:8011
 
-  bonsai-27b-1bit-nothink:
+  bonsai-27b-nothink:
     type: text
     endpoint: http://localhost:8013
 
@@ -27,17 +30,9 @@ models:
     type: text
     endpoint: http://localhost:8021
 
-  gemma-4-e4b:
-    type: text
-    endpoint: http://localhost:8022
-
   gemma-4-e2b-nothink:
     type: text
     endpoint: http://localhost:8023
-
-  gemma-4-e4b-nothink:
-    type: text
-    endpoint: http://localhost:8024
 
   gemma-4-e2b-vision:
     type: vision
@@ -47,6 +42,14 @@ models:
     type: vision
     endpoint: http://localhost:8033
 
+  gemma-4-e4b:
+    type: text
+    endpoint: http://localhost:8022
+
+  gemma-4-e4b-nothink:
+    type: text
+    endpoint: http://localhost:8024
+
   gemma-4-e4b-vision:
     type: vision
     endpoint: http://localhost:8032
@@ -55,30 +58,26 @@ models:
     type: vision
     endpoint: http://localhost:8034
 
-  dolphin3.0-llama3.2-3b:
+  dolphin3-3b:
     type: text
     endpoint: http://localhost:8041
 
-  lfm2.5-1.2b-instruct:
+  lfm2.5-1.2b:
     type: code
     endpoint: http://localhost:8061
 
-  nanbeige4.2-3b:
+  nanbeige-3b:
     type: code
     endpoint: http://localhost:8071
 
-  nanbeige4.2-3b-nothink:
+  nanbeige-3b-nothink:
     type: code
     endpoint: http://localhost:8073
 
-  minicpm5-1b-agentic-tooluse:
+  minicpm5-1b:
     type: code
     endpoint: http://localhost:8081
 
-  minicpm5-1b-agentic-tooluse-nothink:
+  minicpm5-1b-nothink:
     type: code
     endpoint: http://localhost:8083
-
-  # phi-3.5-vision-ov:
-  #   type: vision
-  #   endpoint: http://<IP_Windows>:8011

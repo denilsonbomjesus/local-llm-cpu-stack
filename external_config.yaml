@@ -1,11 +1,16 @@
 # Este é o seu 'Cardápio de IA' para o n8n e outras ferramentas
 models:
-  # Modelos de Texto/Código passam todos pelo GATEWAY (Porta 9000)
-  qwen2.5-coder-3b:
+  # Todos os modelos (texto, código e visão) passam pelo GATEWAY (Porta 9000).
+  # A rota é sempre /v1/chat/completions (formato OpenAI) — inclusive para os
+  # modelos de visão, que aceitam mensagens com image_url via llama.cpp multimodal.
+
+  qwen-coder-3b:
     endpoint: http://localhost:9000/v1/chat/completions
-  bonsai-27b-1bit:
+  qwen-vl-3b-uncensored:
     endpoint: http://localhost:9000/v1/chat/completions
-  bonsai-27b-1bit-nothink:
+  bonsai-27b:
+    endpoint: http://localhost:9000/v1/chat/completions
+  bonsai-27b-nothink:
     endpoint: http://localhost:9000/v1/chat/completions
   ternary-bonsai-27b:
     endpoint: http://localhost:9000/v1/chat/completions
@@ -13,40 +18,32 @@ models:
     endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e2b:
     endpoint: http://localhost:9000/v1/chat/completions
-  gemma-4-e4b:
-    endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e2b-nothink:
-    endpoint: http://localhost:9000/v1/chat/completions
-  gemma-4-e4b-nothink:
     endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e2b-vision:
     endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e2b-vision-nothink:
     endpoint: http://localhost:9000/v1/chat/completions
-  dolphin3.0-llama3.2-3b:
+  gemma-4-e4b:
     endpoint: http://localhost:9000/v1/chat/completions
-  lfm2.5-1.2b-instruct:
-    endpoint: http://localhost:9000/v1/chat/completions
-  nanbeige4.2-3b:
-    endpoint: http://localhost:9000/v1/chat/completions
-  nanbeige4.2-3b-nothink:
-    endpoint: http://localhost:9000/v1/chat/completions
-  minicpm5-1b-agentic-tooluse:
-    endpoint: http://localhost:9000/v1/chat/completions
-  minicpm5-1b-agentic-tooluse-nothink:
+  gemma-4-e4b-nothink:
     endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e4b-vision:
     endpoint: http://localhost:9000/v1/chat/completions
   gemma-4-e4b-vision-nothink:
     endpoint: http://localhost:9000/v1/chat/completions
-
-  # Modelos de Visão (como o seu servidor Python ou o Windows)
-  qwen2.5-vl-3b-uncensored:
-    endpoint: http://localhost:8010/v1/images/captions
-  # phi-3.5-vision-ov:
-  #   endpoint: http://host.docker.internal:8011/v1/images/captions
-
-
+  dolphin3-3b:
+    endpoint: http://localhost:9000/v1/chat/completions
+  lfm2.5-1.2b:
+    endpoint: http://localhost:9000/v1/chat/completions
+  nanbeige-3b:
+    endpoint: http://localhost:9000/v1/chat/completions
+  nanbeige-3b-nothink:
+    endpoint: http://localhost:9000/v1/chat/completions
+  minicpm5-1b:
+    endpoint: http://localhost:9000/v1/chat/completions
+  minicpm5-1b-nothink:
+    endpoint: http://localhost:9000/v1/chat/completions
 
 # =================================================================
 # EXEMPLO DE USO NA PRÁTICA (N8N OU OUTRO SERVIÇO)
@@ -61,7 +58,7 @@ models:
 
 # JSON
 # {
-#   "model": "qwen2.5-coder-3b",
+#   "model": "qwen-coder-3b",
 #   "messages": [
 #     { "role": "user", "content": "Corrija este código Python..." }
 #   ]

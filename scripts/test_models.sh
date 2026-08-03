@@ -4,7 +4,7 @@
 # Uso: ./test_models.sh [chat|server|all]
 #
 # Testa cada modelo tanto no modo chat interativo quanto no modo servidor,
-# verificando se carregam e respondem sem erros do OpenVINO.
+# verificando se carregam e respondem sem erros (backend GGML nativo CPU).
 #
 
 BASE=~/llm-stack
@@ -78,10 +78,10 @@ test_chat() {
     # Roda o chat com um prompt simples, captura stdout e stderr
     output=$(echo "hi" | timeout "$TIMEOUT" "$BASE/scripts/chat.sh" "$model" 2>&1 || true)
 
-    # Verifica se há erro do OpenVINO
-    if echo "$output" | grep -qi "ov::Exception\|OpenVINO.*error\|shape incompatible\|Compute error\|failed to decode\|failed to compute"; then
+    # Verifica se há erro de runtime (GGML/llama.cpp)
+    if echo "$output" | grep -qi "ov::Exception\|shape incompatible\|Compute error\|failed to decode\|failed to compute"; then
         # Procura a linha do erro específico
-        error_line=$(echo "$output" | grep -i "ov::Exception\|shape incompatible\|Compute error" | head -1)
+        error_line=$(echo "$output" | grep -i "shape incompatible\|Compute error\|failed to" | head -1)
         print_result "FAIL" "$test_name" "$error_line"
         FAIL=$((FAIL + 1))
     elif echo "$output" | grep -qi "Error\|error.*-1\|segfault\|SIGSEGV"; then
@@ -151,8 +151,8 @@ test_server() {
     "$BASE/scripts/manage.sh" stop "$model" >/dev/null 2>&1
 
     # Verifica se a resposta contem erro
-    if echo "$response" | grep -qi "error\|ov::Exception\|shape incompatible\|Compute error"; then
-        error_line=$(echo "$response" | grep -i "error\|ov::Exception" | head -1)
+    if echo "$response" | grep -qi "error\|shape incompatible\|Compute error"; then
+        error_line=$(echo "$response" | grep -i "error" | head -1)
         print_result "FAIL" "$test_name" "$error_line"
         FAIL=$((FAIL + 1))
     elif echo "$response" | grep -qi '"content"'; then
@@ -179,12 +179,12 @@ case "$MODE" in
         echo "🧪 Modo: TESTE CHAT"
         echo ""
 
-        test_chat "qwen-coder"    "Qwen-Coder"
-        test_chat "qwen-vl-uncensored" "Qwen-VL Uncensored (visao)"
-        test_chat "dolphin3"      "Dolphin3.0"
-        test_chat "lfm25"         "LFM 2.5"
-        test_chat "nanbeige"      "Nanbeige4.2"
-        test_chat "minicpm5"      "MiniCPM5"
+        test_chat "qwen-coder-3b"    "Qwen-Coder-3B"
+        test_chat "qwen-vl-3b-uncensored" "Qwen-VL 3B Uncensored (visao)"
+        test_chat "dolphin3-3b"     "Dolphin3.0-3B"
+        test_chat "lfm2.5-1.2b"     "LFM 2.5-1.2B"
+        test_chat "nanbeige-3b"     "Nanbeige4.2-3B"
+        test_chat "minicpm5-1b"     "MiniCPM5-1B"
 
         print_summary
         ;;
@@ -193,12 +193,12 @@ case "$MODE" in
         echo "🧪 Modo: TESTE SERVER"
         echo ""
 
-        test_server "qwen-coder"   8003 "Qwen-Coder"
-        test_server "qwen-vl-uncensored" 8010 "Qwen-VL Uncensored (visao)"
-        test_server "dolphin3"     8041 "Dolphin3.0"
-        test_server "lfm25"        8061 "LFM 2.5"
-        test_server "nanbeige"     8071 "Nanbeige4.2"
-        test_server "minicpm5"     8081 "MiniCPM5"
+        test_server "qwen-coder-3b"   8003 "Qwen-Coder-3B"
+        test_server "qwen-vl-3b-uncensored" 8010 "Qwen-VL 3B Uncensored (visao)"
+        test_server "dolphin3-3b"    8041 "Dolphin3.0-3B"
+        test_server "lfm2.5-1.2b"    8061 "LFM 2.5-1.2B"
+        test_server "nanbeige-3b"    8071 "Nanbeige4.2-3B"
+        test_server "minicpm5-1b"    8081 "MiniCPM5-1B"
 
         print_summary
         ;;
@@ -211,24 +211,24 @@ case "$MODE" in
         echo "  📋 TESTES DE CHAT INTERATIVO"
         echo "──────────────────────────────────────────────"
 
-        test_chat "qwen-coder"    "Qwen-Coder"
-        test_chat "qwen-vl-uncensored" "Qwen-VL Uncensored (visao)"
-        test_chat "dolphin3"      "Dolphin3.0"
-        test_chat "lfm25"         "LFM 2.5"
-        test_chat "nanbeige"      "Nanbeige4.2"
-        test_chat "minicpm5"      "MiniCPM5"
+        test_chat "qwen-coder-3b"    "Qwen-Coder-3B"
+        test_chat "qwen-vl-3b-uncensored" "Qwen-VL 3B Uncensored (visao)"
+        test_chat "dolphin3-3b"     "Dolphin3.0-3B"
+        test_chat "lfm2.5-1.2b"     "LFM 2.5-1.2B"
+        test_chat "nanbeige-3b"     "Nanbeige4.2-3B"
+        test_chat "minicpm5-1b"     "MiniCPM5-1B"
 
         echo ""
         echo "──────────────────────────────────────────────"
         echo "  📋 TESTES DE SERVIDOR"
         echo "──────────────────────────────────────────────"
 
-        test_server "qwen-coder"   8003 "Qwen-Coder"
-        test_server "qwen-vl-uncensored" 8010 "Qwen-VL Uncensored (visao)"
-        test_server "dolphin3"     8041 "Dolphin3.0"
-        test_server "lfm25"        8061 "LFM 2.5"
-        test_server "nanbeige"     8071 "Nanbeige4.2"
-        test_server "minicpm5"     8081 "MiniCPM5"
+        test_server "qwen-coder-3b"   8003 "Qwen-Coder-3B"
+        test_server "qwen-vl-3b-uncensored" 8010 "Qwen-VL 3B Uncensored (visao)"
+        test_server "dolphin3-3b"    8041 "Dolphin3.0-3B"
+        test_server "lfm2.5-1.2b"    8061 "LFM 2.5-1.2B"
+        test_server "nanbeige-3b"    8071 "Nanbeige4.2-3B"
+        test_server "minicpm5-1b"    8081 "MiniCPM5-1B"
 
         print_summary
         ;;
