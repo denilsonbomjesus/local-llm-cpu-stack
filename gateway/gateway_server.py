@@ -1,9 +1,8 @@
-import json
 import yaml
 import httpx
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, StreamingResponse # Adicionado StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 CONFIG_PATH = "models.yaml"
@@ -86,16 +85,11 @@ async def chat_completions(request: Request):
 
     raise HTTPException(status_code=500, detail="Unsupported backend type")
 
-@app.post("/v1/images/captions/{model_name}")
-async def vision_captions(model_name: str, request: Request):
-    backend = get_backend(model_name)
-    endpoint = backend["endpoint"]
-    async with httpx.AsyncClient(timeout=None) as client:
-        content_type = request.headers.get("Content-Type")
-        body = await request.body()
-        resp = await client.post(
-            f"{endpoint}/v1/images/captions",
-            content=body,
-            headers={"Content-Type": content_type}
-        )
-    return JSONResponse(status_code=resp.status_code, content=resp.json())
+# NOTA SOBRE VISÃO:
+# Todos os modelos de visão (qwen-vl-3b-uncensored, gemma-4-e2b-vision, etc.)
+# rodam via llama-server multimodal e usam a MESMA rota /v1/chat/completions,
+# enviando a imagem no formato OpenAI (image_url com file:// ou data URI).
+# Não existe mais rota /v1/images/captions: o llama-server não a implementa.
+# Para usar: POST /v1/chat/completions com "model": "<modelo-de-visao>" e
+# mensagens contendo { "type": "image_url", "image_url": { "url": "file:///caminho" } }.
+# (A antiga rota /v1/images/captions foi removida junto com o servidor Python legado vision/.)

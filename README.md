@@ -387,22 +387,32 @@ This should already return JSON in OpenAI format. [learn.arm](https://learn.arm.
 > The `"model"` field here is ignored by `llama-server` (it is already "fixed" in the binary), but we will use this field in the *gateway* for routing.
 
 ***
-## 🧠 10. Vision – servers
+## 🧠 10. Vision – models
 ### 10.1. Vision via llama.cpp (GGUF multimodal nativo)
-O `llama.cpp` agora suporta modelos multimodais nativamente via GGUF. O **Qwen2.5-VL-3B-Uncensored** roda diretamente no `llama-server` com suporte a imagens através do mmproj.
+O `llama.cpp` suporta modelos multimodais nativamente via GGUF (modelo + mmproj). Todos os modelos de visão do stack usam a **mesma rota** `/v1/chat/completions` com formato OpenAI de imagem (`image_url`). Não existe mais o servidor Python legado (`vision/` foi removido — consolidado no `llama-server`/gateway).
 
-**Comando (via manage.sh):**
+**Modelos de visão disponíveis:**
+
+| Short name | Porta | Descrição |
+|---|---|---|
+| `qwen-vl-3b-uncensored` | 8010 | Qwen2.5-VL 3B abliterado (Q4_K_M + mmproj) |
+| `gemma-4-e2b-vision` | 8031 | Gemma 4 E2B + visão |
+| `gemma-4-e2b-vision-nothink` | 8033 | Gemma 4 E2B + visão (thinking OFF) |
+| `gemma-4-e4b-vision` | 8032 | Gemma 4 E4B + visão |
+| `gemma-4-e4b-vision-nothink` | 8034 | Gemma 4 E4B + visão (thinking OFF) |
+
+**Iniciar um modelo de visão (via manage.sh):**
 ```bash
-./scripts/manage.sh start qwen-vl-3b-uncensored
+./scripts/manage.sh start qwen-vl-3b-uncensored   # ou gemma-4-e2b-vision, gemma-4-e4b-vision...
 ```
 
-**Chat interativo:**
+**Chat interativo (via chat.sh):**
 ```bash
 ./scripts/chat.sh qwen-vl-3b-uncensored
 # Depois use /image caminho/da/imagem.jpg dentro do chat
 ```
 
-**Teste via HTTP:**
+**Direto na porta do modelo:**
 ```bash
 curl http://localhost:8010/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -417,6 +427,24 @@ curl http://localhost:8010/v1/chat/completions \
     "max_tokens": 256
   }'
 ```
+
+**Via gateway (qualquer modelo de visão, porta 9000):**
+```bash
+curl http://localhost:9000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "gemma-4-e2b-vision",   # troque por qwen-vl-3b-uncensored, gemma-4-e4b-vision...
+    "messages": [
+      {"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": "file:///path/to/image.jpg"}},
+        {"type": "text", "text": "Describe this image in detail."}
+      ]}
+    ],
+    "max_tokens": 256
+  }'
+```
+
+> O gateway encaminha para a porta certa com base no `"model"` (todos os modelos de visão estão registrados em `gateway/models.yaml` e `external_config.yaml`).
 
 ***
 
@@ -610,22 +638,15 @@ async def chat_completions(request: Request):
 
     raise HTTPException(status_code=500, detail="Unsupported backend type")
 
-@app.post("/v1/images/captions/{model_name}")
-async def vision_captions(model_name: str, request: Request):
-    backend = get_backend(model_name)
-    endpoint = backend["endpoint"]
-    async with httpx.AsyncClient(timeout=None) as client:
-        content_type = request.headers.get("Content-Type")
-        body = await request.body()
-        resp = await client.post(
-            f"{endpoint}/v1/images/captions",
-            content=body,
-            headers={"Content-Type": content_type}
-        )
-    return JSONResponse(status_code=resp.status_code, content=resp.json())
+# NOTA SOBRE VISÃO:
+# Todos os modelos de visão (qwen-vl-3b-uncensored, gemma-4-e2b-vision, etc.)
+# rodam via llama-server multimodal e usam a MESMA rota /v1/chat/completions,
+# enviando a imagem no formato OpenAI (image_url com file:// ou data URI).
+# Não existe mais rota /v1/images/captions: o llama-server não a implementa.
+# (A antiga rota /v1/images/captions foi removida junto com o servidor Python legado vision/.)
 ```
 
-> I kept `/v1/chat/completions` centralized for text/code (where OpenAI compatibility matters most for n8n/AnythingLLM/etc.). For vision, I recommend calling the vision endpoint directly (since each has a different format). [github](http://github.com/ggml-org/llama.cpp)
+> All models — text, code AND vision — go through `/v1/chat/completions` (OpenAI-compatible). Vision models receive the image via `image_url` in the message content. The legacy `/v1/images/captions` route and the Python `vision/` server were removed.
 
 Run the gateway:
 
