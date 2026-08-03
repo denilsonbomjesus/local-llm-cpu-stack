@@ -80,7 +80,37 @@ run_chat() {
     fi
 
     # --- CHAT INTERATIVO ---
-    $cmd -cnv --log-disable
+    # Verbosidade de log em TRACE (-lv 4) para ativar o memory breakdown
+    # no encerramento (o breakdown usa LOG_TRC, suprimido no nível padrão).
+    # Os logs do servidor vão para stderr (arquivo de log) para não poluir
+    # o chat; o texto do modelo e os timings [Prompt/Generation] vão para
+    # stdout e permanecem visíveis no terminal.
+    local log_file
+    log_file="/tmp/llama-chat-${model}.log"
+    # Garante que /tmp está gravável antes de redirecionar stderr
+    if ! : > "$log_file" 2>/dev/null; then
+        log_file="/dev/null"
+    fi
+
+    $cmd -cnv -lv 4 2>>"$log_file"
+
+    # --- RESUMO DE CONTEXTO/MEMÓRIA AO ENCERRAR ---
+    # Extrai do log o breakdown de memória (model/context/compute) e os
+    # timings finais da última geração, exibidos após o chat terminar.
+    if [ -s "$log_file" ]; then
+        echo ""
+        echo "═══════════════════════════════════════════"
+        echo "   📊 RESUMO DE CONTEXTO / MEMÓRIA"
+        echo "═══════════════════════════════════════════"
+        # Timings da última geração (prompt eval / eval / total)
+        grep "slot print_timing" "$log_file" | tail -5
+        echo ""
+        # Memory breakdown (janela de contexto em MiB): o cabeçalho e a linha
+        # do Host usam o prefixo common_memory_breakdown_print (2 linhas por
+        # ocorrência — startup e exit). tail -4 pega as 2 do encerramento.
+        grep "common_memory_breakdown_print" "$log_file" | tail -4
+        echo "═══════════════════════════════════════════"
+    fi
 }
 
 function show_help() {
@@ -117,6 +147,7 @@ function show_help() {
     echo "Uso: Digite /image com o caminho da imagem, depois o prompt do chat."
     echo ""
     echo "DICA: Certifique-se que o modelo está DESLIGADO no manage.sh"
+    echo "DICA: Ao encerrar com /exit, o resumo de contexto/memória aparece no final"
     echo "================================================================="
 }
 
