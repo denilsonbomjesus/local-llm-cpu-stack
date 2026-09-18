@@ -27,7 +27,8 @@ The project is organized to keep models, servers, and scripts isolated:
   │   ├── vision/              # Qwen2.5-VL (Model + mmproj)
   │   └── bonsai/              # Bonsai 27B 1-bit + Ternary Bonsai 27B
   ├── gateway/                 # FastAPI router (Port 9000)
-  ├── scripts/                 # Control scripts (manage.sh, chat.sh)
+  ├── scripts/                 # Control scripts (manage.sh, chat.sh, webui.sh)
+  ├── external/                # Presets (WebUI model catalog)
   ├── logs/                    # Execution logs (optional)
   ├── external_config.yaml     # Model menu for external tools
   └── README.md                # This documentation
@@ -756,7 +757,9 @@ On WSL2, the consolidated structure is:
   ├── gateway/                 # venv + gateway_server.py + models.yaml
   ├── scripts/                 
   │   ├── manage.sh            # Main control script (Start/Stop/Status)
-  │   └── chat.sh              # Script for interactive CLI chat
+  │   ├── chat.sh              # Script for interactive CLI chat
+  │   └── webui.sh             # Graphical chat interface (WebUI, port 8080)
+  ├── external/                # Presets (webui-models.ini — WebUI catalog)
   ├── external_config.yaml     # Configurations for n8n / external tools
   └── logs/                    # Log files (optional)
 ```
@@ -783,6 +786,56 @@ If you want to chat with a model directly from the terminal (without going throu
 ./scripts/chat.sh [model]
 ```
 *Note: The chosen model must be STOPPED in `manage.sh` to avoid memory conflict.*
+
+### 11.3. Graphical Chat Interface (llama.cpp WebUI — `webui.sh`)
+Besides the terminal (`chat.sh`), the stack ships with the **official `llama.cpp` web chat UI**, embedded in `llama-server` itself (ChatGPT-style). It runs in **router mode**: a single process serves **all catalog models at once**, loading each one into RAM **on demand** — you only pay the memory cost of the model currently in use.
+
+**How to open:**
+```bash
+./scripts/webui.sh start
+```
+
+Then open in the browser (works from Windows or inside WSL):
+```
+http://localhost:8080
+```
+> WSL2 forwards `localhost` to Windows automatically. Everything is 100% local — no data leaves your machine.
+
+**Commands (`webui.sh`):**
+- `./scripts/webui.sh start`   → Bring up the UI on port 8080.
+- `./scripts/webui.sh stop`    → Stop the UI and free RAM.
+- `./scripts/webui.sh restart` → Restart (required after editing the catalog).
+- `./scripts/webui.sh status`  → Show if it is running and list catalog models.
+- `./scripts/webui.sh logs`    → Follow the server log (Ctrl+C to exit).
+
+**What the interface has:**
+- 💬 Chat with **conversation history** saved in the browser (sidebar, multiple conversations)
+- 🔄 **Model picker** with the 20 short names from the `external/webui-models.ini` catalog (same names as manage.sh/chat.sh)
+- 🖼️ **Image upload** on vision models (Gemma 4 `-vision`, Qwen-VL) — just attach in the chat
+- 📎 Text/CSV attachments as context; Markdown rendering and syntax-highlighted code blocks
+- 🎛️ Generation controls: temperature, top_p, max_tokens and per-conversation system prompt
+- 🧠 Reasoning (thinking) control on models that support it
+- 📐 Structured output: JSON Schema and GBNF grammar directly from the UI
+- 🌗 Light/dark theme and keyboard shortcuts
+
+**How it works (router mode):**
+- 1 single tmux session (`webui`) and 1 port (8080) — unlike `manage.sh`, which uses 1 process/port per model (80xx).
+- The `external/webui-models.ini` catalog defines each model: GGUF file, `-nothink` variants (`reasoning = off`), `-vision` (`mmproj`), plus `threads = 8`, `batch = 256` and per-model context (same values as manage.sh).
+- `--models-max 2`: at most 2 models loaded in RAM at the same time; unload one before loading another (from the UI itself or via `POST /models/unload`).
+- Quick API test:
+```bash
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model":"dolphin3-3b","messages":[{"role":"user","content":"hello"}]}'
+```
+
+**RAM:** memory is shared with the `manage.sh` servers. Before using Bonsai 27B (~5-8 GB), stop the other servers (`./scripts/manage.sh stop-all`). Small models (1-3B) coexist fine with the WebUI running.
+
+**Common WebUI issues:**
+- Page "does not open" when testing with curl → the embedded UI is served **gzip-compressed**; browsers always send the accepted header. Test with `curl -H "Accept-Encoding: gzip" http://localhost:8080/` — if you get `200 text/html`, the UI is fine and the problem is the client.
+- New model does not show up → the router reads the catalog at boot: edit `external/webui-models.ini` and run `./scripts/webui.sh restart`.
+- `out of memory` when loading a model → close manage.sh servers or pick a smaller model; if needed, lower that section's `ctx-size` in the INI.
+- Vision model fails to load → check that the mmproj exists at the path declared in the INI (`ls models/vision/`).
 
 ---
 
