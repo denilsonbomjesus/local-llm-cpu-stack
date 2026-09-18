@@ -2,4 +2,5 @@ llama.cpp/
 *.gguf
 */venv
 */__pycache__
-docs/logs/
+docs/
+logs/
